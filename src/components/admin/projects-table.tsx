@@ -1,0 +1,155 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  deleteProject,
+  reorderProjects,
+  togglePublish,
+} from "@/server/actions/projects";
+import type { Photo, Project, Category } from "@/server/db/schema";
+
+export type ProjectRow = Project & {
+  category: Category | null;
+  photos: Photo[];
+};
+
+export function ProjectsTable({ initial }: { initial: ProjectRow[] }) {
+  const [rows, setRows] = useState(initial);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const next = arrayMove(
+      rows,
+      rows.findIndex((r) => r.id === active.id),
+      rows.findIndex((r) => r.id === over.id),
+    );
+    setRows(next);
+    reorderProjects({ ids: next.map((r) => r.id) }).catch(() =>
+      toast.error("Échec du réordonnancement"),
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+        Aucun projet. Créez-en un pour commencer.
+      </p>
+    );
+  }
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+        <div className="grid gap-2">
+          {rows.map((row) => (
+            <Row
+              key={row.id}
+              row={row}
+              onDeleted={() => setRows((p) => p.filter((r) => r.id !== row.id))}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function Row({ row, onDeleted }: { row: ProjectRow; onDeleted: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: row.id });
+  const [published, setPublished] = useState(row.published);
+  const cover = row.photos[0];
+
+  function toggle(v: boolean) {
+    setPublished(v);
+    togglePublish(row.id, v).catch(() => {
+      setPublished(!v);
+      toast.error("Erreur");
+    });
+  }
+
+  function remove() {
+    if (!confirm(`Supprimer « ${row.title} » ?`)) return;
+    deleteProject(row.id)
+      .then(onDeleted)
+      .catch(() => toast.error("Erreur"));
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-3 rounded-lg border border-border bg-card p-2 ${
+        isDragging ? "z-10 opacity-70" : ""
+      }`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab text-muted-foreground"
+        aria-label="Déplacer"
+      >
+        <GripVertical className="size-4" />
+      </button>
+
+      <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">
+        {cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cover.variants.webp[0]?.url ?? cover.lqip ?? ""}
+            alt=""
+            className="size-full object-cover"
+          />
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{row.title}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {row.category?.name ?? "Sans catégorie"} · {row.photos.length} photo(s)
+        </p>
+      </div>
+
+      {!published && <Badge variant="secondary">Brouillon</Badge>}
+
+      <div className="flex items-center gap-1.5 px-2">
+        <Switch checked={published} onCheckedChange={toggle} aria-label="Publier" />
+      </div>
+
+      <Button asChild variant="ghost" size="sm">
+        <Link href={`/admin/projects/${row.id}`}>
+          <Pencil className="size-4" />
+        </Link>
+      </Button>
+      <Button variant="ghost" size="sm" onClick={remove}>
+        <Trash2 className="size-4 text-destructive" />
+      </Button>
+    </div>
+  );
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "site_settings" ADD COLUMN "socials" jsonb DEFAULT '[]'::jsonb NOT NULL;

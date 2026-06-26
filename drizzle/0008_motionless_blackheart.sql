@@ -1,0 +1,1 @@
+ALTER TABLE "site_settings" ADD COLUMN "animations" jsonb DEFAULT '{"cursorEnabled":true,"cursorIntensity":100,"photoHoverEnabled":true,"photoHoverIntensity":100,"scrollWaveEnabled":true,"scrollWaveIntensity":100}'::jsonb NOT NULL;

@@ -2,9 +2,10 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 /**
- * Abstraction de stockage objet.
- *  - Production : Cloudflare R2 (si les variables R2_* sont définies).
- *  - Local : disque sous public/uploads (aucun compte cloud requis).
+ * Abstraction de stockage objet. Priorité :
+ *  1. Cloudflare R2  — si les variables R2_* sont définies.
+ *  2. Vercel Blob    — si BLOB_READ_WRITE_TOKEN est défini (stockage natif Vercel).
+ *  3. Disque local   — dev (public/uploads), aucun compte cloud requis.
  */
 const hasR2 = Boolean(
   process.env.R2_ACCOUNT_ID &&
@@ -12,9 +13,13 @@ const hasR2 = Boolean(
     process.env.R2_SECRET_ACCESS_KEY &&
     process.env.R2_BUCKET,
 );
+const hasBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
 export function publicUrl(key: string) {
-  return hasR2 ? `${process.env.R2_PUBLIC_URL}/${key}` : `/uploads/${key}`;
+  // R2 : URL construite depuis le domaine public. Blob : l'URL est renvoyée par
+  // `put()` (domaine du store dynamique) → cette fonction n'est pas utilisée pour Blob.
+  if (hasR2) return `${process.env.R2_PUBLIC_URL}/${key}`;
+  return `/uploads/${key}`;
 }
 
 export async function putObject(
@@ -41,11 +46,24 @@ export async function putObject(
         CacheControl: "public, max-age=31536000, immutable",
       }),
     );
-  } else {
-    const filePath = path.join(process.cwd(), "public", "uploads", key);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, body);
+    return publicUrl(key);
   }
+
+  if (hasBlob) {
+    const { put } = await import("@vercel/blob");
+    const { url } = await put(key, body, {
+      access: "public",
+      contentType,
+      addRandomSuffix: false, // le chemin = la clé (déterministe)
+      allowOverwrite: true, // ré-upload du même hash → on écrase au lieu d'échouer
+      cacheControlMaxAge: 31536000,
+    });
+    return url; // URL publique du blob (domaine du store)
+  }
+
+  const filePath = path.join(process.cwd(), "public", "uploads", key);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, body);
   return publicUrl(key);
 }
 
@@ -63,10 +81,20 @@ export async function deleteObject(key: string): Promise<void> {
     await client.send(
       new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET!, Key: key }),
     );
-  } else {
-    const filePath = path.join(process.cwd(), "public", "uploads", key);
-    await fs.rm(filePath, { force: true });
+    return;
   }
+
+  if (hasBlob) {
+    // `del()` attend une URL → on retrouve le blob par son chemin exact.
+    const { list, del } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix: key });
+    const exact = blobs.find((b) => b.pathname === key);
+    if (exact) await del(exact.url);
+    return;
+  }
+
+  const filePath = path.join(process.cwd(), "public", "uploads", key);
+  await fs.rm(filePath, { force: true });
 }
 
 /** Supprime toutes les déclinaisons d'une photo (original + variants). */
@@ -74,10 +102,19 @@ export async function deletePhotoObjects(storageKey: string): Promise<void> {
   // storageKey = "photos/<hash>-<name>/original.jpg" → on vide tout le dossier
   const prefix = storageKey.replace(/\/original\.[^/]+$/, "");
   if (hasR2) {
-    // Pour R2 : suppression best-effort des clés connues (variants listés ailleurs).
+    // Pour R2 : suppression best-effort de l'original (variants listés ailleurs).
     await deleteObject(storageKey);
-  } else {
-    const dir = path.join(process.cwd(), "public", "uploads", prefix);
-    await fs.rm(dir, { recursive: true, force: true });
+    return;
   }
+
+  if (hasBlob) {
+    // Tous les blobs sous le préfixe (original + variants) en une fois.
+    const { list, del } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix });
+    if (blobs.length) await del(blobs.map((b) => b.url));
+    return;
+  }
+
+  const dir = path.join(process.cwd(), "public", "uploads", prefix);
+  await fs.rm(dir, { recursive: true, force: true });
 }

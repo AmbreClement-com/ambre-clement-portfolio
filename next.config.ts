@@ -35,6 +35,16 @@ const nextConfig: NextConfig = {
   devIndicators: false, // évite la collision avec le menu compte (bas-gauche)
   // sharp (natif) et PGlite (WASM) : chargés depuis node_modules, non bundlés
   serverExternalPackages: ["sharp", "@electric-sql/pglite"],
+  // PGlite n'est utilisé qu'en DEV local ; en prod on est sur Neon. Ses gros binaires
+  // (~16 Mo de .wasm/.data) gonflaient les fonctions serverless au-delà de la limite
+  // Vercel (250 Mo). On les exclut du trace : l'import JS reste valide (les
+  // `new URL(…wasm)` ne sont résolus qu'à l'instanciation, qui n'a jamais lieu en prod).
+  outputFileTracingExcludes: {
+    "**": [
+      "node_modules/@electric-sql/pglite/dist/*.wasm",
+      "node_modules/@electric-sql/pglite/dist/*.data",
+    ],
+  },
   // Transitions de vue React (morph couverture → page projet à l'ouverture)
   experimental: { viewTransition: true },
   async headers() {

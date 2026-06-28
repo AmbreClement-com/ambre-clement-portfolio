@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, like, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { categories } from "@/server/db/schema";
@@ -22,10 +22,24 @@ function safeSlug(name: string) {
   return slug;
 }
 
+/** Slug d'onglet UNIQUE (suffixe -2, -3… si déjà pris) → pas de crash sur doublon. */
+async function uniqueCategorySlug(base: string, excludeId?: string): Promise<string> {
+  const match = or(eq(categories.slug, base), like(categories.slug, `${base}-%`));
+  const rows = await db
+    .select({ slug: categories.slug })
+    .from(categories)
+    .where(excludeId ? and(ne(categories.id, excludeId), match) : match);
+  const taken = new Set(rows.map((r) => r.slug));
+  if (!taken.has(base)) return base;
+  let i = 2;
+  while (taken.has(`${base}-${i}`)) i++;
+  return `${base}-${i}`;
+}
+
 export async function createCategory(raw: unknown) {
   await requireAdmin();
   const { name, type } = categoryInput.parse(raw);
-  const slug = safeSlug(name);
+  const slug = await uniqueCategorySlug(safeSlug(name));
   const [{ max }] = await db
     .select({ max: sql<number>`coalesce(max(${categories.displayOrder}), -1)` })
     .from(categories);
@@ -40,9 +54,10 @@ export async function createCategory(raw: unknown) {
 export async function renameCategory(id: string, name: string) {
   await requireAdmin();
   const parsed = z.string().min(1).max(60).parse(name);
+  const slug = await uniqueCategorySlug(safeSlug(parsed), id);
   await db
     .update(categories)
-    .set({ name: parsed, slug: safeSlug(parsed) })
+    .set({ name: parsed, slug })
     .where(eq(categories.id, id));
   revalidate();
 }

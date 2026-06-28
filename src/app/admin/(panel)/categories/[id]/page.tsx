@@ -35,7 +35,7 @@ export default async function CategoryContentPage({
         description={
           isPhotos
             ? "Glissez les photos pour les réordonner. Le texte alternatif est requis (SEO)."
-            : "Projets de cet onglet (catégorie assignée dans chaque projet)."
+            : "Projets de cet onglet. « Nouveau projet » l'ajoute directement ici."
         }
         badge={
           <Badge variant="secondary">
@@ -45,7 +45,7 @@ export default async function CategoryContentPage({
         actions={
           isPhotos ? undefined : (
             <Button asChild size="sm">
-              <Link href="/admin/projects/new">
+              <Link href={`/admin/projects/new?categoryId=${id}`}>
                 <Plus className="size-4" /> Nouveau projet
               </Link>
             </Button>

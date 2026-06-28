@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProjectById, getProjectCategories } from "@/server/db/queries/projects";
+import { getProjectById } from "@/server/db/queries/projects";
 import { ProjectForm } from "@/components/admin/project-form";
 import { PhotoManager } from "@/components/admin/photo-manager";
 import { PageHeader } from "@/components/admin/page-header";
@@ -20,10 +20,7 @@ export default async function EditProjectPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [project, categories] = await Promise.all([
-    getProjectById(id),
-    getProjectCategories(),
-  ]);
+  const project = await getProjectById(id);
   if (!project) notFound();
 
   return (
@@ -52,7 +49,7 @@ export default async function EditProjectPage({
             <CardTitle className="text-base">Détails</CardTitle>
           </CardHeader>
           <CardContent>
-            <ProjectForm project={project} categories={categories} />
+            <ProjectForm project={project} categoryId={project.categoryId} />
           </CardContent>
         </Card>
 

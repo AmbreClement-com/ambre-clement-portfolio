@@ -11,21 +11,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { Category, Project } from "@/server/db/schema";
+import type { Project } from "@/server/db/schema";
 
 type Props = {
   project?: Project;
-  categories: Category[];
+  /** Onglet (catégorie) du projet — déterminé par le contexte de création, jamais choisi
+   *  à la main : un projet appartient TOUJOURS à l'onglet d'où il a été créé. */
+  categoryId: string | null;
 };
 
-export function ProjectForm({ project, categories }: Props) {
+export function ProjectForm({ project, categoryId }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const isEdit = Boolean(project);
@@ -33,7 +28,6 @@ export function ProjectForm({ project, categories }: Props) {
   const [title, setTitle] = useState(project?.title ?? "");
   const [slug, setSlug] = useState(project?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(isEdit);
-  const [categoryId, setCategoryId] = useState(project?.categoryId ?? "");
   const [location, setLocation] = useState(project?.location ?? "");
   const [shotDate, setShotDate] = useState(project?.shotDate ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
@@ -97,22 +91,6 @@ export function ProjectForm({ project, categories }: Props) {
           required
         />
         <p className="text-xs text-muted-foreground">/projects/{slug || "…"}</p>
-      </div>
-
-      <div className="grid gap-2">
-        <Label>Catégorie</Label>
-        <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Aucune" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

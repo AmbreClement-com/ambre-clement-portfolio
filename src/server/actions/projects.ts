@@ -22,6 +22,13 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
   return `${base}-${i}`;
 }
 
+/** Revalide TOUT après une mutation projet : la liste admin (`/admin/projects`) ET les
+ *  surfaces publiques (cinéma `/[onglet]`, pages `/projects/[slug]`). Sans la partie
+ *  admin, la liste restait en cache → « le projet ne se crée pas » (alors qu'il existe). */
+function revalidateProjects() {
+  revalidatePath("/", "layout");
+}
+
 export async function createProject(raw: unknown) {
   await requireAdmin();
   const data = projectInput.parse(raw);
@@ -48,7 +55,7 @@ export async function createProject(raw: unknown) {
     })
     .returning();
 
-  revalidatePath("/projects");
+  revalidateProjects();
   return row;
 }
 
@@ -73,14 +80,13 @@ export async function updateProject(id: string, raw: unknown) {
     })
     .where(eq(projects.id, id));
 
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${slug}`);
+  revalidateProjects();
 }
 
 export async function deleteProject(id: string) {
   await requireAdmin();
   await db.delete(projects).where(eq(projects.id, id));
-  revalidatePath("/projects");
+  revalidateProjects();
 }
 
 export async function togglePublish(id: string, published: boolean) {
@@ -89,7 +95,7 @@ export async function togglePublish(id: string, published: boolean) {
     .update(projects)
     .set({ published, publishedAt: published ? new Date() : null })
     .where(eq(projects.id, id));
-  revalidatePath("/projects");
+  revalidateProjects();
 }
 
 /** Réordonne les projets : ordre du tableau = displayOrder. */
@@ -101,5 +107,5 @@ export async function reorderProjects(raw: unknown) {
       db.update(projects).set({ displayOrder: i }).where(eq(projects.id, id)),
     ),
   );
-  revalidatePath("/projects");
+  revalidateProjects();
 }

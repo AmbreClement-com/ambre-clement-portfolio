@@ -30,15 +30,16 @@ export async function processAndUpload(
   originalName: string,
 ): Promise<ProcessedImage> {
   // Sur Vercel, `file.arrayBuffer()` (undici) peut renvoyer un buffer adossé à un
-  // SharedArrayBuffer, que sharp REFUSE en entrée ("SharedArrayBuffer is not allowed").
-  // On le RECOPIE dans un Buffer classique (non partagé) avant tout traitement.
+  // SharedArrayBuffer, que sharp ET crypto REFUSENT ("SharedArrayBuffer is not allowed").
+  // On le RECOPIE une fois dans un Buffer classique (non partagé) et on l'utilise PARTOUT
+  // (sharp + hash) — sinon le hash plantait après que sharp ait réussi.
   const safeInput = Buffer.from(input);
   const base = sharp(safeInput).rotate(); // applique l'orientation EXIF
   const meta = await base.metadata();
   const width = meta.width ?? 0;
   const height = meta.height ?? 0;
 
-  const hash = createHash("sha256").update(input).digest("hex").slice(0, 16);
+  const hash = createHash("sha256").update(safeInput).digest("hex").slice(0, 16);
   const safeName = originalName.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]/gi, "-");
   const prefix = `photos/${hash}-${safeName}`;
 

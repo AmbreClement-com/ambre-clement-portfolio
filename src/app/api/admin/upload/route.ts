@@ -111,9 +111,12 @@ export async function POST(req: Request) {
         .returning();
       created.push(row);
     } catch (err) {
-      // On NE PAS avaler l'erreur silencieusement : on la logge (visible dans les
-      // logs Vercel) pour diagnostiquer un échec d'upload (sharp/mémoire/stockage).
-      console.error(`[upload] échec pour "${file.name}":`, err);
+      // On NE PAS avaler l'erreur silencieusement : on logge message + STACK (visible
+      // dans les logs Vercel) pour diagnostiquer un échec d'upload.
+      console.error(
+        `[upload] échec pour "${file.name}":`,
+        err instanceof Error ? `${err.message}\n${err.stack}` : err,
+      );
       skipped.push(file.name);
     }
   }

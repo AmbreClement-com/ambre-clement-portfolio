@@ -34,6 +34,50 @@ function thumb(photo: Photo) {
   return photo.variants.webp[0]?.url ?? photo.lqip ?? "";
 }
 
+// Redimensionnement CÔTÉ NAVIGATEUR avant l'upload : on n'envoie pas l'original
+// pleine résolution (souvent 10-20 Mo) mais une version ~2560 px (~1 Mo). Comme la
+// plus grande variante affichée fait 2400 px, l'affichage est STRICTEMENT identique,
+// mais on transfère ~10× moins de données → upload de gros lots bien plus rapide.
+// Décodage hors thread principal (createImageBitmap). Fallback : fichier d'origine si
+// le format n'est pas décodable (ex. HEIC) ou en cas d'erreur.
+const MAX_UPLOAD_DIM = 2560;
+async function downscaleForUpload(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const bitmap = await createImageBitmap(file, {
+      imageOrientation: "from-image",
+    });
+    const max = Math.max(bitmap.width, bitmap.height);
+    if (!max || max <= MAX_UPLOAD_DIM) {
+      bitmap.close();
+      return file; // déjà assez petite
+    }
+    const scale = MAX_UPLOAD_DIM / max;
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      bitmap.close();
+      return file;
+    }
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob(res, "image/jpeg", 0.9),
+    );
+    if (!blob || blob.size >= file.size) return file; // pas de gain → garde l'original
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", {
+      type: "image/jpeg",
+    });
+  } catch {
+    return file;
+  }
+}
+
 type Props = {
   initial: Photo[];
   /** Cible : un projet… */
@@ -71,20 +115,21 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
     let added = 0;
     let done = 0;
     let cursor = 0;
-    const CONCURRENCY = 3; // 3 photos traitées de front (réseau + sharp serveur)
+    const CONCURRENCY = 6; // 6 photos de front (redimension client + réseau + serveur)
 
     // Pool de workers : 1 requête = 1 photo → progression précise + pas de timeout 60s
-    // sur les gros lots, et 3 photos en parallèle.
+    // sur les gros lots. Chaque photo est REDIMENSIONNÉE dans le navigateur avant l'envoi.
     async function worker() {
       while (cursor < list.length) {
         const i = cursor++;
         const file = list[i];
         try {
+          const toSend = await downscaleForUpload(file); // ~10× moins de données
           const fd = new FormData();
           if (projectId) fd.set("projectId", projectId);
           if (categoryId) fd.set("categoryId", categoryId);
           fd.set("order", String(startOrder + i));
-          fd.append("files", file);
+          fd.append("files", toSend);
           const res = await fetch("/api/admin/upload", {
             method: "POST",
             body: fd,

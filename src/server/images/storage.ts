@@ -53,10 +53,12 @@ export async function putObject(
     const { put } = await import("@vercel/blob");
     // undici (le fetch utilisé par Blob) REFUSE un body adossé à un SharedArrayBuffer
     // ("ArrayBuffer: SharedArrayBuffer is not allowed"). Sur Vercel, les buffers de
-    // sortie de sharp le sont → on RECOPIE dans une ArrayBuffer V8 classique, garantie
-    // non partagée (`new Uint8Array(len)` n'utilise jamais le pool partagé).
-    const safeBody = new Uint8Array(body.byteLength);
-    safeBody.set(body);
+    // sortie de sharp le sont → on copie dans une ArrayBuffer V8 classique (garantie
+    // non partagée) puis on l'enveloppe en Buffer (vue, sans repasser par le pool de
+    // Node qui peut être partagé). `Buffer` est aussi requis par le type `PutBody`.
+    const ab = new ArrayBuffer(body.byteLength);
+    new Uint8Array(ab).set(body);
+    const safeBody = Buffer.from(ab);
     const { url } = await put(key, safeBody, {
       access: "public",
       contentType,

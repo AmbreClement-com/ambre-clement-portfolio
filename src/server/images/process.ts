@@ -29,7 +29,11 @@ export async function processAndUpload(
   input: Buffer,
   originalName: string,
 ): Promise<ProcessedImage> {
-  const base = sharp(input).rotate(); // applique l'orientation EXIF
+  // Sur Vercel, `file.arrayBuffer()` (undici) peut renvoyer un buffer adossé à un
+  // SharedArrayBuffer, que sharp REFUSE en entrée ("SharedArrayBuffer is not allowed").
+  // On le RECOPIE dans un Buffer classique (non partagé) avant tout traitement.
+  const safeInput = Buffer.from(input);
+  const base = sharp(safeInput).rotate(); // applique l'orientation EXIF
   const meta = await base.metadata();
   const width = meta.width ?? 0;
   const height = meta.height ?? 0;

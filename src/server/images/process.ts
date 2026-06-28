@@ -48,38 +48,47 @@ export async function processAndUpload(
   const targetWidths: number[] = WIDTHS.filter((w) => !width || w <= width);
   if (targetWidths.length === 0 && width) targetWidths.push(width);
 
-  // ── ENCODAGE + UPLOAD, LARGEUR PAR LARGEUR (séquentiel) ──────────────────────────
-  // On NE parallélise PAS les ~10 encodes : une grosse photo × 10 encodes AVIF
-  // simultanés dépasse la mémoire de la fonction serverless Vercel (1024 Mo en Hobby,
-  // non augmentable) → OOM et la fonction crashe (« impossible d'uploader »). Ici, par
-  // largeur : avif + webp en parallèle (2 encodes max simultanés), puis upload, puis on
-  // passe à la suivante. Mémoire bornée, vitesse correcte (1 photo = 1 requête).
+  // ── ENCODAGE (séquentiel, mémoire bornée) puis UPLOAD (tout en parallèle) ─────────
+  // AVIF `effort: 2` : ~7× plus rapide qu'effort 4 (le défaut) pour une qualité
+  // IDENTIQUE — l'effort ne joue QUE sur la taille du fichier, pas sur la qualité
+  // visuelle. On encode largeur par largeur (2 encodes max simultanés → mémoire bornée,
+  // pas d'OOM serverless), on collecte les buffers, PUIS on pousse l'original + toutes
+  // les variantes EN PARALLÈLE sur le store (réseau) → upload quasi instantané.
   const storageKey = `${prefix}/original.jpg`;
-  const variants: ImageVariants = { avif: [], webp: [] };
-
+  const encoded: { fmt: "avif" | "webp"; w: number; buf: Buffer; ct: string }[] =
+    [];
   for (const w of targetWidths) {
     const resized = base.clone().resize({ width: w, withoutEnlargement: true });
     const [avifBuf, webpBuf] = await Promise.all([
-      resized.clone().avif({ quality: 60 }).toBuffer(),
+      resized.clone().avif({ quality: 60, effort: 2 }).toBuffer(),
       resized.clone().webp({ quality: 80 }).toBuffer(),
     ]);
-    const [avifUrl, webpUrl] = await Promise.all([
-      putObject(`${prefix}/${w}.avif`, avifBuf, "image/avif"),
-      putObject(`${prefix}/${w}.webp`, webpBuf, "image/webp"),
-    ]);
-    variants.avif.push({ width: w, url: avifUrl }); // targetWidths déjà trié croissant
-    variants.webp.push({ width: w, url: webpUrl });
+    encoded.push({ fmt: "avif", w, buf: avifBuf, ct: "image/avif" });
+    encoded.push({ fmt: "webp", w, buf: webpBuf, ct: "image/webp" });
   }
-
-  // Original nettoyé + LQIP (légers), après les variantes.
   const originalBuf = await base.clone().toBuffer();
-  await putObject(storageKey, originalBuf, "image/jpeg");
   const lqipBuf = await base
     .clone()
     .resize({ width: 24 })
     .webp({ quality: 30 })
     .toBuffer();
-  const lqip = `data:image/webp;base64,${lqipBuf.toString("base64")}`;
 
+  // Upload de l'original + toutes les variantes EN PARALLÈLE (réseau, peu de mémoire).
+  const variants: ImageVariants = { avif: [], webp: [] };
+  const [uploaded] = await Promise.all([
+    Promise.all(
+      encoded.map(async (e) => ({
+        fmt: e.fmt,
+        width: e.w,
+        url: await putObject(`${prefix}/${e.w}.${e.fmt}`, e.buf, e.ct),
+      })),
+    ),
+    putObject(storageKey, originalBuf, "image/jpeg"),
+  ]);
+  for (const v of uploaded) variants[v.fmt].push({ width: v.width, url: v.url });
+  variants.avif.sort((a, b) => a.width - b.width);
+  variants.webp.sort((a, b) => a.width - b.width);
+
+  const lqip = `data:image/webp;base64,${lqipBuf.toString("base64")}`;
   return { storageKey, width, height, lqip, variants };
 }

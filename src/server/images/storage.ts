@@ -51,7 +51,13 @@ export async function putObject(
 
   if (hasBlob) {
     const { put } = await import("@vercel/blob");
-    const { url } = await put(key, body, {
+    // undici (le fetch utilisé par Blob) REFUSE un body adossé à un SharedArrayBuffer
+    // ("ArrayBuffer: SharedArrayBuffer is not allowed"). Sur Vercel, les buffers de
+    // sortie de sharp le sont → on RECOPIE dans une ArrayBuffer V8 classique, garantie
+    // non partagée (`new Uint8Array(len)` n'utilise jamais le pool partagé).
+    const safeBody = new Uint8Array(body.byteLength);
+    safeBody.set(body);
+    const { url } = await put(key, safeBody, {
       access: "public",
       contentType,
       addRandomSuffix: false, // le chemin = la clé (déterministe)

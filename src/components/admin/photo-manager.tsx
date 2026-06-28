@@ -115,7 +115,7 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
     let added = 0;
     let done = 0;
     let cursor = 0;
-    const CONCURRENCY = 6; // 6 photos de front (redimension client + réseau + serveur)
+    const CONCURRENCY = 4; // 4 de front : équilibre réseau/mémoire (redimension + upload)
 
     // Pool de workers : 1 requête = 1 photo → progression précise + pas de timeout 60s
     // sur les gros lots. Chaque photo est REDIMENSIONNÉE dans le navigateur avant l'envoi.

@@ -89,12 +89,19 @@ export async function POST(req: Request) {
       continue;
     }
     try {
+      const t0 = Date.now();
       const buffer = Buffer.from(await file.arrayBuffer());
+      const recvMs = Date.now() - t0;
       if (!isSupportedImage(buffer)) {
         skipped.push(file.name);
         continue;
       }
       const processed = await processAndUpload(buffer, file.name);
+      // Diagnostic perf : taille reçue (→ redimensionnement client OK si ~1 Mo),
+      // temps de réception du corps, temps total.
+      console.log(
+        `[upload] "${file.name}" ${(file.size / 1048576).toFixed(1)}Mo | reçu ${recvMs}ms | total ${Date.now() - t0}ms`,
+      );
       const [row] = await db
         .insert(photos)
         .values({

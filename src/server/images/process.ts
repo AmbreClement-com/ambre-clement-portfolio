@@ -34,7 +34,21 @@ export async function processAndUpload(
   // On le RECOPIE une fois dans un Buffer classique (non partagé) et on l'utilise PARTOUT
   // (sharp + hash) — sinon le hash plantait après que sharp ait réussi.
   const safeInput = Buffer.from(input);
-  const base = sharp(safeInput).rotate(); // applique l'orientation EXIF
+
+  // PLAFOND SERVEUR à 2560 px. Si une image PLEINE RÉSOLUTION arrive (redimensionnement
+  // navigateur inactif), on la borne ICI → le traitement ET l'original stocké restent
+  // légers (~1 Mo) au lieu de 15-40 Mo, donc pas de timeout serveur. La plus grande
+  // variante affichée fait 2400 px → aucune perte de qualité visible.
+  const probe = await sharp(safeInput).metadata();
+  const tooBig = Math.max(probe.width ?? 0, probe.height ?? 0) > 2560;
+  const source = tooBig
+    ? await sharp(safeInput)
+        .rotate()
+        .resize({ width: 2560, height: 2560, fit: "inside" })
+        .toBuffer()
+    : safeInput;
+
+  const base = sharp(source).rotate(); // EXIF (no-op si déjà plafonné)
   const meta = await base.metadata();
   const width = meta.width ?? 0;
   const height = meta.height ?? 0;

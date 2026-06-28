@@ -110,7 +110,10 @@ export async function POST(req: Request) {
         })
         .returning();
       created.push(row);
-    } catch {
+    } catch (err) {
+      // On NE PAS avaler l'erreur silencieusement : on la logge (visible dans les
+      // logs Vercel) pour diagnostiquer un échec d'upload (sharp/mémoire/stockage).
+      console.error(`[upload] échec pour "${file.name}":`, err);
       skipped.push(file.name);
     }
   }

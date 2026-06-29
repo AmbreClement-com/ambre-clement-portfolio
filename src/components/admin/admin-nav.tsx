@@ -11,6 +11,7 @@ import {
   Wrench,
   Images,
   FolderOpen,
+  Tag,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -75,16 +76,19 @@ export function AdminNav({
   isDev,
   categories = [],
   projects = [],
+  tarifs = [],
 }: {
   role?: string;
   isDev?: boolean;
   categories?: NavCategory[];
   projects?: NavProject[];
+  tarifs?: { id: string; title: string }[];
 }) {
   const pathname = usePathname();
   const ongletsActive =
     pathname.startsWith("/admin/categories") ||
-    pathname.startsWith("/admin/projects");
+    pathname.startsWith("/admin/projects") ||
+    pathname.startsWith("/admin/tarifs");
 
   // Projet en cours d'édition (pour auto-déplier son onglet).
   const curProjectId =
@@ -110,6 +114,9 @@ export function AdminNav({
   });
   const toggleCat = (id: string) =>
     setOpenCats((s) => ({ ...s, [id]: !s[id] }));
+  const [openTarifs, setOpenTarifs] = useState(
+    pathname.startsWith("/admin/tarifs"),
+  );
 
   return (
     <nav className="flex flex-col gap-1">
@@ -126,11 +133,11 @@ export function AdminNav({
         label="Onglets"
         icon={Layers}
         active={ongletsActive}
-        expandable={categories.length > 0}
+        expandable
         open={openOnglets}
         onToggle={() => setOpenOnglets((v) => !v)}
       />
-      {openOnglets && categories.length > 0 && (
+      {openOnglets && (
         <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
           {categories.map((c) => {
             const catActive = pathname === `/admin/categories/${c.id}`;
@@ -181,6 +188,35 @@ export function AdminNav({
               </div>
             );
           })}
+
+          {/* Onglet « Tarifs » (dépliable pour montrer les tarifs) */}
+          <div>
+            <Row
+              href="/admin/tarifs"
+              label="Tarifs"
+              icon={Tag}
+              active={pathname === "/admin/tarifs"}
+              expandable={tarifs.length > 0}
+              open={openTarifs}
+              onToggle={() => setOpenTarifs((v) => !v)}
+              small
+            />
+            {openTarifs && tarifs.length > 0 && (
+              <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
+                {tarifs.map((t) => (
+                  <Row
+                    key={t.id}
+                    href={`/admin/tarifs/${t.id}`}
+                    label={t.title}
+                    icon={Tag}
+                    active={pathname === `/admin/tarifs/${t.id}`}
+                    expandable={false}
+                    small
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

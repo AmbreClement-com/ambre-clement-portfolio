@@ -1,6 +1,28 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
-import { projects, photos, categories, siteSettings } from "@/server/db/schema";
+import {
+  projects,
+  photos,
+  categories,
+  siteSettings,
+  pricings,
+} from "@/server/db/schema";
+
+/* ------------------------------- Tarifs -------------------------- */
+
+/** Tarifs PUBLIÉS (page publique /tarifs + visibilité de l'onglet « Tarifs »). */
+export async function getPublishedPricings() {
+  return db
+    .select()
+    .from(pricings)
+    .where(eq(pricings.published, true))
+    .orderBy(asc(pricings.displayOrder));
+}
+
+/** Tous les tarifs (admin). */
+export async function getAllPricings() {
+  return db.select().from(pricings).orderBy(asc(pricings.displayOrder));
+}
 
 /* ---------------------------- Catégories ------------------------- */
 

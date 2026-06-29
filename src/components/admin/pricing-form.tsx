@@ -4,30 +4,35 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
-import { updatePricing } from "@/server/actions/pricing";
+import { createPricing, updatePricing } from "@/server/actions/pricing";
+import { NEW_PRICING_DEFAULTS } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
-import type { PricingContent, StoredImage } from "@/server/db/schema";
+import type { Pricing, StoredImage } from "@/server/db/schema";
 
-export function PricingForm({ initial }: { initial: PricingContent }) {
+export function PricingForm({ pricing }: { pricing?: Pricing | null }) {
   const router = useRouter();
+  const isEdit = Boolean(pricing);
   const [pending, start] = useTransition();
   const [imgBusy, setImgBusy] = useState(false);
 
-  const [published, setPublished] = useState(initial.published);
-  const [navLabel, setNavLabel] = useState(initial.navLabel);
-  const [title, setTitle] = useState(initial.title);
-  const [subtitle, setSubtitle] = useState(initial.subtitle);
-  const [intro, setIntro] = useState(initial.intro);
-  const [includes, setIncludes] = useState<string[]>(
-    initial.includes.length ? initial.includes : [""],
+  const [published, setPublished] = useState(pricing?.published ?? false);
+  const [title, setTitle] = useState(pricing?.title ?? NEW_PRICING_DEFAULTS.title);
+  const [subtitle, setSubtitle] = useState(
+    pricing?.subtitle ?? NEW_PRICING_DEFAULTS.subtitle,
   );
-  const [price, setPrice] = useState(initial.price);
-  const [image, setImage] = useState<StoredImage | null>(initial.image);
+  const [intro, setIntro] = useState(pricing?.intro ?? NEW_PRICING_DEFAULTS.intro);
+  const [includes, setIncludes] = useState<string[]>(
+    pricing?.includes?.length
+      ? pricing.includes
+      : [...NEW_PRICING_DEFAULTS.includes],
+  );
+  const [price, setPrice] = useState(pricing?.price ?? NEW_PRICING_DEFAULTS.price);
+  const [image, setImage] = useState<StoredImage | null>(pricing?.image ?? null);
 
   async function onPickImage(file: File) {
     setImgBusy(true);
@@ -54,30 +59,28 @@ export function PricingForm({ initial }: { initial: PricingContent }) {
   }
 
   function save() {
+    const payload = { published, title, subtitle, intro, includes, price, image };
     start(async () => {
       try {
-        const res = await updatePricing({
-          published,
-          navLabel,
-          title,
-          subtitle,
-          intro,
-          includes,
-          price,
-          image,
-        });
-        if ("error" in res) {
-          toast.error(res.error);
-          return;
+        if (isEdit && pricing) {
+          const res = await updatePricing(pricing.id, payload);
+          if ("error" in res) {
+            toast.error(res.error);
+            return;
+          }
+          toast.success("Tarif enregistré");
+          router.refresh();
+        } else {
+          const res = await createPricing(payload);
+          if ("error" in res) {
+            toast.error(res.error);
+            return;
+          }
+          toast.success("Tarif créé");
+          router.push(`/admin/tarifs/${res.id}`);
         }
-        toast.success(
-          published
-            ? "Page Tarifs enregistrée et publiée"
-            : "Page Tarifs enregistrée (non publiée)",
-        );
-        router.refresh();
       } catch {
-        toast.error("La page Tarifs n'a pas pu être enregistrée. Réessayez.");
+        toast.error("Le tarif n'a pas pu être enregistré. Réessayez.");
       }
     });
   }
@@ -86,13 +89,12 @@ export function PricingForm({ initial }: { initial: PricingContent }) {
 
   return (
     <div className="grid gap-6">
-      {/* Publication */}
+      {/* Publication du tarif */}
       <div className="flex items-center justify-between rounded-lg border border-border p-4">
         <div>
-          <p className="font-medium">Publier la page Tarifs</p>
+          <p className="font-medium">Publier ce tarif</p>
           <p className="text-sm text-muted-foreground">
-            Si activé, « {navLabel || "Tarifs"} » apparaît dans le menu du site et
-            la page est accessible publiquement.
+            Visible sur la page Tarifs du site. En brouillon, il reste caché.
           </p>
         </div>
         <Switch checked={published} onCheckedChange={setPublished} />
@@ -141,15 +143,14 @@ export function PricingForm({ initial }: { initial: PricingContent }) {
         </div>
       </div>
 
-      {/* Champs texte */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2">
-          <Label htmlFor="navLabel">Libellé dans le menu</Label>
+          <Label htmlFor="title">Titre</Label>
           <Input
-            id="navLabel"
-            value={navLabel}
-            onChange={(e) => setNavLabel(e.target.value)}
-            placeholder="Tarifs"
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Photographie maternité"
           />
         </div>
         <div className="grid gap-2">
@@ -161,16 +162,6 @@ export function PricingForm({ initial }: { initial: PricingContent }) {
             placeholder="À partir de 335 € TTC"
           />
         </div>
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="title">Titre</Label>
-        <Input
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Photographie maternité"
-        />
       </div>
 
       <div className="grid gap-2">
@@ -217,9 +208,7 @@ export function PricingForm({ initial }: { initial: PricingContent }) {
                 variant="ghost"
                 size="icon"
                 onClick={() =>
-                  setIncludes((arr) =>
-                    arr.length > 1 ? arr.filter((_, j) => j !== i) : arr,
-                  )
+                  setIncludes((arr) => arr.filter((_, j) => j !== i))
                 }
                 aria-label="Retirer cette ligne"
               >
@@ -243,7 +232,7 @@ export function PricingForm({ initial }: { initial: PricingContent }) {
       <div>
         <Button onClick={save} disabled={pending || imgBusy}>
           {pending && <Spinner className="mr-2" />}
-          Enregistrer
+          {isEdit ? "Enregistrer" : "Créer le tarif"}
         </Button>
       </div>
     </div>

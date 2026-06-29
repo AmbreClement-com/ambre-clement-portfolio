@@ -4,21 +4,25 @@ import { FrameProvider } from "@/components/public/frame-context";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { Analytics } from "@/components/public/analytics";
 import { IntroOverlay } from "@/components/public/intro-overlay";
-import { getSettings, getNavCategories } from "@/server/db/queries/projects";
+import {
+  getSettings,
+  getNavCategories,
+  getPublishedPricings,
+} from "@/server/db/queries/projects";
 import {
   resolveAnimations,
   TRANSITION_SPEED_FACTOR,
 } from "@/lib/animations";
-import { resolvePricing } from "@/lib/pricing";
 
 export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [settings, categories] = await Promise.all([
+  const [settings, categories, publishedPricings] = await Promise.all([
     getSettings().catch(() => null),
     getNavCategories().catch(() => []),
+    getPublishedPricings().catch(() => []),
   ]);
 
   // Réseaux sociaux : la liste éditable, avec repli sur les anciens champs
@@ -39,11 +43,11 @@ export default async function PublicLayout({
   const transitionSpeed = TRANSITION_SPEED_FACTOR[anims.pageTransitionSpeed];
   const loaderSpeed = TRANSITION_SPEED_FACTOR[anims.loaderSpeed];
 
-  // Page Tarifs : n'apparaît dans la navbar QUE si elle est publiée.
-  const pricing = resolvePricing(settings?.pricing);
-  const pricingNav = pricing.published
-    ? { href: "/tarifs", label: pricing.navLabel || "Tarifs" }
-    : null;
+  // Onglet « Tarifs » : visible dans la navbar dès qu'au moins un tarif est publié.
+  const pricingNav =
+    publishedPricings.length > 0
+      ? { href: "/tarifs", label: "Tarifs" }
+      : null;
 
   return (
     <FrameProvider>

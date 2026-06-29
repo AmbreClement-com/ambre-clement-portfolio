@@ -13,7 +13,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, settings, cats, projs] = await Promise.all([
+  const [session, settings, cats, projs, tarifs] = await Promise.all([
     auth(),
     getSettings().catch(() => null),
     db.query.categories
@@ -22,6 +22,12 @@ export default async function AdminLayout({
     db.query.projects
       .findMany({
         columns: { id: true, title: true, categoryId: true },
+        orderBy: (p, { asc }) => [asc(p.displayOrder)],
+      })
+      .catch(() => []),
+    db.query.pricings
+      .findMany({
+        columns: { id: true, title: true },
         orderBy: (p, { asc }) => [asc(p.displayOrder)],
       })
       .catch(() => []),
@@ -60,6 +66,7 @@ export default async function AdminLayout({
             title: p.title,
             categoryId: p.categoryId,
           }))}
+          tarifs={tarifs.map((t) => ({ id: t.id, title: t.title }))}
         />
       </aside>
       <main className="flex-1 p-6 pb-28 md:p-8 md:pb-28">

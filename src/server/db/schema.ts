@@ -104,6 +104,26 @@ export const projectTags = pgTable(
 );
 
 /* ------------------------------------------------------------------ */
+/* Tarifs (plusieurs items, gérés comme les projets)                   */
+/* ------------------------------------------------------------------ */
+
+export const pricings = pgTable("pricings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  intro: text("intro"), // paragraphes (sauts de ligne conservés)
+  includes: jsonb("includes").$type<string[]>().notNull().default([]),
+  price: text("price"),
+  image: jsonb("image").$type<StoredImage>(),
+  published: boolean("published").notNull().default(false),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Pricing = typeof pricings.$inferSelect;
+
+/* ------------------------------------------------------------------ */
 /* Contenu global                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -127,17 +147,6 @@ export type StoredImage = {
   height: number;
 };
 
-/** Contenu éditable de la page Tarifs (publiable ou non). */
-export type PricingContent = {
-  published: boolean;
-  navLabel: string; // libellé dans la navbar (ex. « Tarifs »)
-  title: string; // titre principal (ex. « Photographie maternité »)
-  subtitle: string; // sous-titre (ex. « Grossesse, post-partum, allaitement »)
-  intro: string; // paragraphes de présentation (sauts de ligne conservés)
-  includes: string[]; // « La séance comprend » (liste à puces)
-  price: string; // ex. « 335 € TTC »
-  image: StoredImage | null;
-};
 
 export const siteSettings = pgTable("site_settings", {
   id: integer("id").primaryKey().default(1), // singleton
@@ -148,8 +157,6 @@ export const siteSettings = pgTable("site_settings", {
   contactText: text("contact_text"),
   contactImage: jsonb("contact_image").$type<StoredImage>(),
   legalNotice: text("legal_notice"),
-  // Page Tarifs (contenu + drapeau de publication). Null = jamais configurée.
-  pricing: jsonb("pricing").$type<PricingContent>(),
   // Réseaux sociaux éditables et extensibles (n'importe quel réseau du registre).
   socials: jsonb("socials").$type<SocialLink[]>().notNull().default([]),
   // Réglages des animations (on/off + intensité par effet).

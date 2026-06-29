@@ -33,10 +33,10 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
     .filter(Boolean);
   return (
     <div className="grid w-full items-center gap-8 md:grid-cols-2 md:gap-12">
-      {/* PHOTO (gauche) — cadre type polaroïd */}
+      {/* PHOTO (gauche) — boîte FIXE (même format/position pour tous les tarifs) */}
       <div>
         {p.image ? (
-          <div className="mx-auto w-full max-w-sm border border-neutral-900 bg-white p-2 shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)]">
+          <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)]">
             <ResponsiveImage
               variants={p.image.variants}
               alt={p.title}
@@ -45,7 +45,7 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
               lqip={p.image.lqip}
               priority={priority}
               sizes="(max-width: 768px) 80vw, 38vw"
-              className="h-auto w-full"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           </div>
         ) : (

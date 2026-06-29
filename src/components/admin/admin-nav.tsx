@@ -49,7 +49,7 @@ function Row({
   small?: boolean;
 }) {
   return (
-    <div className={cn("flex items-center", itemClass(active), small && "py-1.5 text-sm")}>
+    <div className={cn("flex min-w-0 items-center", itemClass(active), small && "py-1.5 text-sm")}>
       <Link href={href} className="flex min-w-0 flex-1 items-center gap-2">
         <Icon className={cn("size-4 shrink-0", active && "text-primary")} />
         <span className="truncate">{label}</span>
@@ -138,7 +138,7 @@ export function AdminNav({
         onToggle={() => setOpenOnglets((v) => !v)}
       />
       {openOnglets && (
-        <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
+        <div className="ml-3 grid grid-cols-1 gap-0.5 border-l border-border pl-3">
           {categories.map((c) => {
             const catActive = pathname === `/admin/categories/${c.id}`;
             if (c.type !== "projects") {
@@ -171,7 +171,7 @@ export function AdminNav({
                   small
                 />
                 {open && list.length > 0 && (
-                  <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
+                  <div className="ml-3 grid grid-cols-1 gap-0.5 border-l border-border pl-3">
                     {list.map((p) => (
                       <Row
                         key={p.id}
@@ -202,7 +202,7 @@ export function AdminNav({
               small
             />
             {openTarifs && tarifs.length > 0 && (
-              <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
+              <div className="ml-3 grid grid-cols-1 gap-0.5 border-l border-border pl-3">
                 {tarifs.map((t) => (
                   <Row
                     key={t.id}

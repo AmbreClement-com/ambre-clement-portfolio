@@ -51,18 +51,6 @@ export function buildMetadata({
   };
 }
 
-/** JSON-LD : la photographe (Person). */
-export function personJsonLd(opts: { instagram?: string; linkedin?: string }) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: SITE_NAME,
-    jobTitle: "Photographe",
-    url: SITE_URL,
-    sameAs: [opts.instagram, opts.linkedin].filter(Boolean),
-  };
-}
-
 /** JSON-LD : fil d'Ariane. */
 export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
   return {

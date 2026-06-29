@@ -18,7 +18,6 @@ export const projectInput = z.object({
   seoTitle: z.string().max(70).optional().nullable(),
   seoDescription: z.string().max(160).optional().nullable(),
 });
-export type ProjectInput = z.infer<typeof projectInput>;
 
 /** Alt text OBLIGATOIRE — exigence SEO/accessibilité. */
 export const photoMetaInput = z.object({

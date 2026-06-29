@@ -4,7 +4,7 @@
  */
 import "dotenv/config";
 import { eq, notInArray } from "drizzle-orm";
-import { db } from "../src/server/db";
+import { db, closeDb } from "../src/server/db";
 import { categories, photos, projects } from "../src/server/db/schema";
 
 const DEFAULTS = [
@@ -52,6 +52,7 @@ async function main() {
     .where(notInArray(categories.slug, ["portfolio", "maternite", "projets"]));
 
   console.log("✓ Backfill catégories terminé :", ids);
+  await closeDb(); // flush PGlite avant de quitter (no-op sur Neon)
   process.exit(0);
 }
 

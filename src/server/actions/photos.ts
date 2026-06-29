@@ -12,6 +12,7 @@ export async function updatePhotoAlt(raw: unknown) {
   await requireAdmin();
   const { id, altText } = photoMetaInput.parse(raw);
   await db.update(photos).set({ altText }).where(eq(photos.id, id));
+  revalidatePath("/", "layout");
 }
 
 export async function deletePhoto(id: string) {

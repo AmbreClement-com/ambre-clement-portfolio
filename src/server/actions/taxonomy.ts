@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, like, ne, or, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { categories } from "@/server/db/schema";
+import { nextDisplayOrder, uniqueSlug } from "@/server/db/helpers";
 import { slugify, categoryInput, RESERVED_SLUGS } from "@/lib/validators";
 import type { CategoryType } from "@/server/db/schema";
 import { requireAdmin } from "./guard";
@@ -23,29 +24,17 @@ function safeSlug(name: string) {
 }
 
 /** Slug d'onglet UNIQUE (suffixe -2, -3… si déjà pris) → pas de crash sur doublon. */
-async function uniqueCategorySlug(base: string, excludeId?: string): Promise<string> {
-  const match = or(eq(categories.slug, base), like(categories.slug, `${base}-%`));
-  const rows = await db
-    .select({ slug: categories.slug })
-    .from(categories)
-    .where(excludeId ? and(ne(categories.id, excludeId), match) : match);
-  const taken = new Set(rows.map((r) => r.slug));
-  if (!taken.has(base)) return base;
-  let i = 2;
-  while (taken.has(`${base}-${i}`)) i++;
-  return `${base}-${i}`;
-}
+const uniqueCategorySlug = (base: string, excludeId?: string) =>
+  uniqueSlug(categories, categories.slug, categories.id, base, excludeId);
 
 export async function createCategory(raw: unknown) {
   await requireAdmin();
   const { name, type } = categoryInput.parse(raw);
   const slug = await uniqueCategorySlug(safeSlug(name));
-  const [{ max }] = await db
-    .select({ max: sql<number>`coalesce(max(${categories.displayOrder}), -1)` })
-    .from(categories);
+  const displayOrder = await nextDisplayOrder(categories, categories.displayOrder);
   const [row] = await db
     .insert(categories)
-    .values({ name, slug, type, displayOrder: Number(max) + 1 })
+    .values({ name, slug, type, displayOrder })
     .returning();
   revalidate();
   return row;

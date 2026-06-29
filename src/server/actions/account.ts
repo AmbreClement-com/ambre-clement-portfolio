@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { revalidatePath } from "next/cache";
 import { changePasswordInput, profileInput } from "@/lib/validators";
+import { fullName } from "@/lib/format";
 import { requireAdmin } from "./guard";
 
 export async function updateProfile(raw: unknown) {
@@ -14,13 +15,12 @@ export async function updateProfile(raw: unknown) {
   const email = sessionUser.email;
   if (!email) throw new Error("Votre session a expiré. Reconnectez-vous.");
 
-  const fullName = [firstName, lastName].filter(Boolean).join(" ") || null;
   await db
     .update(users)
     .set({
       firstName: firstName || null,
       lastName: lastName || null,
-      name: fullName,
+      name: fullName(firstName, lastName),
     })
     .where(eq(users.email, email));
   revalidatePath("/admin");

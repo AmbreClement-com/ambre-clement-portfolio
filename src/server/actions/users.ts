@@ -7,6 +7,7 @@ import { hash } from "@node-rs/argon2";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
+import { fullName } from "@/lib/format";
 import { requireAdmin, requireAdminRole } from "./guard";
 
 const ROLES = ["admin", "editor"] as const;
@@ -43,8 +44,7 @@ export async function inviteUser(raw: unknown) {
     return { error: "Un compte utilise déjà cette adresse email." };
 
   const inviteToken = newToken();
-  const name =
-    [data.firstName, data.lastName].filter(Boolean).join(" ").trim() || null;
+  const name = fullName(data.firstName, data.lastName);
   const [row] = await db
     .insert(users)
     .values({
@@ -136,8 +136,7 @@ export async function updateMyProfile(raw: unknown) {
       lastName: z.string().trim().max(60).optional(),
     })
     .parse(raw);
-  const name =
-    [firstName, lastName].filter(Boolean).join(" ").trim() || null;
+  const name = fullName(firstName, lastName);
   await db
     .update(users)
     .set({ firstName: firstName || null, lastName: lastName || null, name })

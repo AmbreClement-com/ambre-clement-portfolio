@@ -5,30 +5,13 @@ import { auth } from "@/server/auth";
 import { db } from "@/server/db";
 import { photos } from "@/server/db/schema";
 import { processAndUpload } from "@/server/images/process";
+import { isSupportedImage } from "@/server/images/validate";
 
 export const runtime = "nodejs"; // sharp nécessite Node
 export const maxDuration = 60;
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/tiff"];
 const MAX_SIZE = 25 * 1024 * 1024; // 25 Mo
-
-/** Vérifie la signature binaire réelle du fichier (ne pas se fier au Content-Type). */
-function isSupportedImage(buf: Buffer): boolean {
-  const ascii = (start: number, len: number) =>
-    buf.subarray(start, start + len).toString("latin1");
-  if (buf.length < 12) return false;
-  // JPEG
-  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true;
-  // PNG
-  if (ascii(1, 3) === "PNG") return true;
-  // WebP : RIFF....WEBP
-  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return true;
-  // AVIF/HEIF : ....ftyp + marque avif/heic
-  if (ascii(4, 4) === "ftyp" && /avif|heic|mif1|msf1/.test(ascii(8, 4))) return true;
-  // TIFF
-  if (ascii(0, 2) === "II" || ascii(0, 2) === "MM") return true;
-  return false;
-}
 
 export async function POST(req: Request) {
   const session = await auth();

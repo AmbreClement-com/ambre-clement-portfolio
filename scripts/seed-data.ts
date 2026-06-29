@@ -14,6 +14,8 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, closeDb } from "../src/server/db";
 import { projects, photos, categories, visits } from "../src/server/db/schema";
+import { processAndUpload } from "../src/server/images/process";
+import { slugify } from "../src/lib/validators";
 
 const randInt = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
 const pickOne = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -58,8 +60,6 @@ async function seedVisits() {
   }
   console.log(`✓ ${rows.length} visites de démo`);
 }
-import { processAndUpload } from "../src/server/images/process";
-import { slugify } from "../src/lib/validators";
 
 const PALETTES: [string, string][] = [
   ["#e8d5c4", "#85586f"],

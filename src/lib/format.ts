@@ -13,6 +13,14 @@ export function formatDuration(ms: number): string {
   return `${m} min ${rem.toString().padStart(2, "0")} s`;
 }
 
+/** Assemble prénom + nom en un nom complet, ou `null` si les deux sont vides. */
+export function fullName(
+  first?: string | null,
+  last?: string | null,
+): string | null {
+  return [first, last].filter(Boolean).join(" ").trim() || null;
+}
+
 /** Date ISO (YYYY-MM-DD) → « JJ/MM ». */
 export function formatDayShort(iso: string): string {
   const [, m, d] = iso.split("-");

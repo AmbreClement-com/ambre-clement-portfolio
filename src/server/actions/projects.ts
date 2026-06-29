@@ -1,26 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, like, ne, or, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { projects } from "@/server/db/schema";
+import { nextDisplayOrder, uniqueSlug } from "@/server/db/helpers";
 import { projectInput, reorderInput } from "@/lib/validators";
 import { requireAdmin } from "./guard";
-
-/** Garantit un slug UNIQUE : renvoie `base`, ou `base-2`, `base-3`… si déjà pris
- *  (en excluant éventuellement le projet courant). Évite le crash sur doublon. */
-async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
-  const match = or(eq(projects.slug, base), like(projects.slug, `${base}-%`));
-  const rows = await db
-    .select({ slug: projects.slug })
-    .from(projects)
-    .where(excludeId ? and(ne(projects.id, excludeId), match) : match);
-  const taken = new Set(rows.map((r) => r.slug));
-  if (!taken.has(base)) return base;
-  let i = 2;
-  while (taken.has(`${base}-${i}`)) i++;
-  return `${base}-${i}`;
-}
 
 /** Revalide TOUT après une mutation projet : la liste admin (`/admin/projects`) ET les
  *  surfaces publiques (cinéma `/[onglet]`, pages `/projects/[slug]`). Sans la partie
@@ -33,11 +19,8 @@ export async function createProject(raw: unknown) {
   await requireAdmin();
   const data = projectInput.parse(raw);
 
-  const [{ max }] = await db
-    .select({ max: sql<number>`coalesce(max(${projects.displayOrder}), -1)` })
-    .from(projects);
-
-  const slug = await uniqueSlug(data.slug);
+  const displayOrder = await nextDisplayOrder(projects, projects.displayOrder);
+  const slug = await uniqueSlug(projects, projects.slug, projects.id, data.slug);
   const [row] = await db
     .insert(projects)
     .values({
@@ -51,7 +34,7 @@ export async function createProject(raw: unknown) {
       publishedAt: data.published ? new Date() : null,
       seoTitle: data.seoTitle ?? null,
       seoDescription: data.seoDescription ?? null,
-      displayOrder: Number(max) + 1,
+      displayOrder,
     })
     .returning();
 
@@ -63,7 +46,8 @@ export async function updateProject(id: string, raw: unknown) {
   await requireAdmin();
   const data = projectInput.parse(raw);
 
-  const slug = await uniqueSlug(data.slug, id); // exclut le projet courant
+  // exclut le projet courant pour qu'il ne se considère pas en collision avec lui-même
+  const slug = await uniqueSlug(projects, projects.slug, projects.id, data.slug, id);
   await db
     .update(projects)
     .set({

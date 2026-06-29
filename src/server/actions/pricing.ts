@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { pricings, type StoredImage } from "@/server/db/schema";
+import { nextDisplayOrder } from "@/server/db/helpers";
 import { requireAdmin } from "./guard";
 
 // L'image est produite par notre propre route d'upload → validation souple.
@@ -53,12 +54,10 @@ export async function createPricing(
     const field = parsed.error.issues[0]?.message ?? "un champ";
     return { error: `Le ${field} du tarif est invalide. Vérifiez le format.` };
   }
-  const [{ max }] = await db
-    .select({ max: sql<number>`coalesce(max(${pricings.displayOrder}), -1)` })
-    .from(pricings);
+  const displayOrder = await nextDisplayOrder(pricings, pricings.displayOrder);
   const [row] = await db
     .insert(pricings)
-    .values({ ...clean(parsed.data), displayOrder: Number(max) + 1 })
+    .values({ ...clean(parsed.data), displayOrder })
     .returning();
   revalidate();
   return { id: row.id };

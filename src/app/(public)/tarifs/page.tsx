@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPublishedPricings } from "@/server/db/queries/projects";
 import { FrameMeta } from "@/components/public/frame-context";
 import { ResponsiveImage } from "@/components/public/responsive-image";
+import { SmoothScroll } from "@/components/public/smooth-scroll";
 import { buildMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -25,6 +26,7 @@ export default async function PricingPage() {
 
   return (
     <main className="min-h-[100svh] w-full bg-white px-6 pb-24 pt-24 text-neutral-900 md:px-12 lg:px-16">
+      <SmoothScroll />
       <FrameMeta title="Tarifs" count={pricings.length} unit="Tarifs" />
 
       <div className="mx-auto grid max-w-6xl gap-20 md:gap-28">

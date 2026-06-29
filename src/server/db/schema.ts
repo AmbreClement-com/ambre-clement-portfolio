@@ -177,11 +177,16 @@ export type Visit = typeof visits.$inferSelect;
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  // NULL tant que l'utilisateur invité n'a pas choisi son mot de passe (1re connexion).
+  passwordHash: text("password_hash"),
   firstName: text("first_name"),
   lastName: text("last_name"),
   name: text("name"),
+  // "admin" (accès total) ou "editor" (contenu uniquement).
   role: text("role").notNull().default("admin"),
+  // Jeton d'invitation à usage unique → page de définition du mot de passe.
+  inviteToken: text("invite_token").unique(),
+  invitedAt: timestamp("invited_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

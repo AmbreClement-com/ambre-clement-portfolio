@@ -30,7 +30,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await db.query.users.findFirst({
           where: eq(users.email, email),
         });
-        if (!user) {
+        // Pas d'utilisateur, OU invité n'ayant pas encore défini son mot de passe.
+        if (!user || !user.passwordHash) {
           recordFailure(email);
           return null;
         }

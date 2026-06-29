@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  deleteAllPhotos,
   deletePhoto,
   reorderPhotos,
   setCover,
@@ -93,8 +94,27 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
     null,
   );
   const [dragOver, setDragOver] = useState(false);
+  const [deletingAll, startDeleteAll] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const showCover = Boolean(projectId); // couverture = notion propre aux projets
+
+  function removeAll() {
+    if (
+      !confirm(
+        `Supprimer les ${photos.length} photos ? Cette action est définitive.`,
+      )
+    )
+      return;
+    startDeleteAll(async () => {
+      try {
+        await deleteAllPhotos({ projectId, categoryId });
+        setPhotos([]);
+        toast.success("Toutes les photos ont été supprimées");
+      } catch {
+        toast.error("Échec de la suppression");
+      }
+    });
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -235,6 +255,29 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
           onChange={(e) => e.target.files && upload(e.target.files)}
         />
       </div>
+
+      {photos.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {photos.length} photo(s)
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={removeAll}
+            disabled={deletingAll || uploading}
+            className="text-destructive hover:text-destructive"
+          >
+            {deletingAll ? (
+              <Spinner className="mr-2" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}
+            Tout supprimer
+          </Button>
+        </div>
+      )}
 
       {photos.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>

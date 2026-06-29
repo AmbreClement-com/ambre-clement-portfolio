@@ -37,7 +37,10 @@ export default async function AdminLayout({
           <span className="size-2 rounded-full bg-primary" />
           Administration
         </p>
-        <AdminNav />
+        <AdminNav
+          role={session.user.role}
+          isDev={process.env.NODE_ENV !== "production"}
+        />
       </aside>
       <main className="flex-1 p-6 pb-28 md:p-8 md:pb-28">
         <div className="mx-auto w-full max-w-6xl">{children}</div>

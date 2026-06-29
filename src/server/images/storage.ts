@@ -3,22 +3,64 @@ import path from "node:path";
 
 /**
  * Abstraction de stockage objet. Priorité :
- *  1. Cloudflare R2  — si les variables R2_* sont définies.
- *  2. Vercel Blob    — si BLOB_READ_WRITE_TOKEN est défini (stockage natif Vercel).
- *  3. Disque local   — dev (public/uploads), aucun compte cloud requis.
+ *  1. Stockage S3-compatible — si la config S3 est complète (Cloudflare R2,
+ *     Supabase Storage, Backblaze B2, MinIO… : n'importe quel endpoint S3).
+ *  2. Vercel Blob   — si BLOB_READ_WRITE_TOKEN est défini.
+ *  3. Disque local  — dev (public/uploads), aucun compte cloud requis.
+ *
+ * Config S3 (variables génériques `S3_*`, repli sur les `R2_*` historiques) :
+ *  - S3_ENDPOINT      ex. https://<projet>.supabase.co/storage/v1/s3
+ *                     (R2 : déduit de R2_ACCOUNT_ID si S3_ENDPOINT absent)
+ *  - S3_REGION        ex. eu-west-3 (R2 : "auto")
+ *  - S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY
+ *  - S3_BUCKET
+ *  - S3_PUBLIC_URL    base publique de lecture, SANS slash final
  */
-const hasR2 = Boolean(
-  process.env.R2_ACCOUNT_ID &&
-    process.env.R2_ACCESS_KEY_ID &&
-    process.env.R2_SECRET_ACCESS_KEY &&
-    process.env.R2_BUCKET,
-);
+const S3 = (() => {
+  const accessKeyId =
+    process.env.S3_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey =
+    process.env.S3_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY;
+  const bucket = process.env.S3_BUCKET || process.env.R2_BUCKET;
+  const publicBase = (
+    process.env.S3_PUBLIC_URL ||
+    process.env.R2_PUBLIC_URL ||
+    ""
+  ).replace(/\/+$/, "");
+  const region = process.env.S3_REGION || process.env.R2_REGION || "auto";
+  const endpoint =
+    process.env.S3_ENDPOINT ||
+    (process.env.R2_ACCOUNT_ID
+      ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+      : undefined);
+  const enabled = Boolean(
+    accessKeyId && secretAccessKey && bucket && publicBase && endpoint,
+  );
+  return { enabled, accessKeyId, secretAccessKey, bucket, publicBase, region, endpoint };
+})();
+
+const hasS3 = S3.enabled;
 const hasBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
+/** Client S3 (R2 / Supabase / tout endpoint compatible). */
+async function s3Client() {
+  const { S3Client } = await import("@aws-sdk/client-s3");
+  return new S3Client({
+    region: S3.region,
+    endpoint: S3.endpoint,
+    // path-style = compatible partout (requis par Supabase, supporté par R2).
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: S3.accessKeyId!,
+      secretAccessKey: S3.secretAccessKey!,
+    },
+  });
+}
+
 export function publicUrl(key: string) {
-  // R2 : URL construite depuis le domaine public. Blob : l'URL est renvoyée par
+  // S3 : URL construite depuis la base publique. Blob : l'URL est renvoyée par
   // `put()` (domaine du store dynamique) → cette fonction n'est pas utilisée pour Blob.
-  if (hasR2) return `${process.env.R2_PUBLIC_URL}/${key}`;
+  if (hasS3) return `${S3.publicBase}/${key}`;
   return `/uploads/${key}`;
 }
 
@@ -27,21 +69,21 @@ export async function putObject(
   body: Buffer,
   contentType: string,
 ): Promise<string> {
-  if (hasR2) {
-    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
-    const client = new S3Client({
-      region: "auto",
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-      },
-    });
+  if (hasS3) {
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await s3Client();
+    // Sur Vercel, les buffers de sharp sont adossés à un SharedArrayBuffer. Or, au
+    // moment de signer la requête, le SDK AWS hashe le corps (SHA256) et smithy REFUSE
+    // un SharedArrayBuffer ("input argument must be ArrayBuffer"). On recopie donc dans
+    // un ArrayBuffer V8 classique (non partagé) puis on l'enveloppe en Buffer.
+    const ab = new ArrayBuffer(body.byteLength);
+    new Uint8Array(ab).set(body);
+    const safeBody = Buffer.from(ab);
     await client.send(
       new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET!,
+        Bucket: S3.bucket!,
         Key: key,
-        Body: body,
+        Body: safeBody,
         ContentType: contentType,
         CacheControl: "public, max-age=31536000, immutable",
       }),
@@ -76,18 +118,11 @@ export async function putObject(
 }
 
 export async function deleteObject(key: string): Promise<void> {
-  if (hasR2) {
-    const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
-    const client = new S3Client({
-      region: "auto",
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-      },
-    });
+  if (hasS3) {
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await s3Client();
     await client.send(
-      new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET!, Key: key }),
+      new DeleteObjectCommand({ Bucket: S3.bucket!, Key: key }),
     );
     return;
   }
@@ -109,9 +144,28 @@ export async function deleteObject(key: string): Promise<void> {
 export async function deletePhotoObjects(storageKey: string): Promise<void> {
   // storageKey = "photos/<hash>-<name>/original.jpg" → on vide tout le dossier
   const prefix = storageKey.replace(/\/original\.[^/]+$/, "");
-  if (hasR2) {
-    // Pour R2 : suppression best-effort de l'original (variants listés ailleurs).
-    await deleteObject(storageKey);
+  if (hasS3) {
+    // Liste tout le dossier de la photo (original + variantes) puis supprime en lot.
+    const { ListObjectsV2Command, DeleteObjectsCommand } = await import(
+      "@aws-sdk/client-s3"
+    );
+    const client = await s3Client();
+    const Prefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    const listed = await client.send(
+      new ListObjectsV2Command({ Bucket: S3.bucket!, Prefix }),
+    );
+    const objects = (listed.Contents ?? [])
+      .map((o) => o.Key)
+      .filter((k): k is string => Boolean(k))
+      .map((Key) => ({ Key }));
+    if (objects.length) {
+      await client.send(
+        new DeleteObjectsCommand({
+          Bucket: S3.bucket!,
+          Delete: { Objects: objects },
+        }),
+      );
+    }
     return;
   }
 

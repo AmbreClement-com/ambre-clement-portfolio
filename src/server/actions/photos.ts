@@ -23,6 +23,28 @@ export async function deletePhoto(id: string) {
   revalidatePath("/", "layout");
 }
 
+/** Supprime TOUTES les photos d'un projet (ou d'une galerie d'onglet), fichiers compris. */
+export async function deleteAllPhotos(target: {
+  projectId?: string;
+  categoryId?: string;
+}) {
+  await requireAdmin();
+  const { projectId, categoryId } = target;
+  if (!projectId && !categoryId) return { deleted: 0 };
+  const where = projectId
+    ? eq(photos.projectId, projectId)
+    : eq(photos.categoryId, categoryId!);
+  const list = await db.query.photos.findMany({ where });
+  if (list.length === 0) return { deleted: 0 };
+  await db.delete(photos).where(where);
+  // Suppression des objets de stockage en best-effort (un échec ne bloque pas).
+  await Promise.all(
+    list.map((p) => deletePhotoObjects(p.storageKey).catch(() => {})),
+  );
+  revalidatePath("/", "layout");
+  return { deleted: list.length };
+}
+
 /** Réordonne les photos : l'ordre du tableau = displayOrder (0,1,2…). */
 export async function reorderPhotos(raw: unknown) {
   await requireAdmin();

@@ -64,6 +64,13 @@
       "when": 1782335041855,
       "tag": "0008_motionless_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782686503703,
+      "tag": "0009_hesitant_jackpot",
+      "breakpoints": true
     }
   ]
 }

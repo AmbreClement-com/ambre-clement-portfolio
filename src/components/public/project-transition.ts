@@ -376,6 +376,13 @@ export function finishReveal() {
     const mainEl = document.querySelector<HTMLElement>("main");
     if (mainEl) gsap.set(mainEl, { clearProps: "transform,transformOrigin" });
 
+    // La liste « cinéma » défile la fenêtre (elle fait n×100vh) : quand on ouvre un
+    // projet situé PLUS BAS, le scroll natif n'est pas encore remis à 0 au moment de
+    // ce 1er layout de la galerie. On le force AVANT toute mesure, sinon le rect de la
+    // 1re photo est décalé du scroll résiduel → la couverture atterrit à côté (bug
+    // « le 1er projet s'ouvre bien, pas les autres »). Au sommet (1er projet) : no-op.
+    window.scrollTo(0, 0);
+
     const canvas = document.querySelector<HTMLElement>("[data-page-clip]");
     const plane = document.querySelector<HTMLElement>("[data-plane]");
     if (!canvas || !plane || plane.getBoundingClientRect().width < 1 || !overlay) {

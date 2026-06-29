@@ -208,6 +208,10 @@ export function PhotosScroller({
         alpha: true,
         // MSAA activé → bords lisses quand l'image se déforme au survol
         antialias: true,
+        // CRUCIAL : sans ça (défaut false), le MSAA mélange le bord avec l'effacement
+        // noir transparent, puis le navigateur re-multiplie → liseré gris sur les bords
+        // (surtout au survol/scroll). En premultiplied, le bord se compose correctement.
+        premultipliedAlpha: true,
       });
       curtains.onError(() => {});
 
@@ -422,7 +426,7 @@ export function PhotosScroller({
                   };
                 }}
                 aria-label={`Agrandir : ${photo.altText}`}
-                className="block h-[155px] max-w-full cursor-pointer overflow-hidden bg-neutral-100 [&>picture]:block [&>picture]:h-full sm:h-[200px] lg:h-[255px]"
+                className="block h-[155px] max-w-full cursor-pointer overflow-hidden [&>picture]:block [&>picture]:h-full sm:h-[200px] lg:h-[255px]"
               >
                 <ResponsiveImage
                   variants={photo.variants}

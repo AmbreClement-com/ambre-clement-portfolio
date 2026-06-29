@@ -10,16 +10,18 @@ const { auth } = NextAuth(authConfig);
  */
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isLogin = pathname === "/admin/login";
+  // Pages publiques sous /admin : connexion + activation de compte (jeton d'invitation).
+  const isPublic =
+    pathname === "/admin/login" || pathname === "/admin/set-password";
   const isAdmin = pathname.startsWith("/admin");
 
-  if (isAdmin && !isLogin && !req.auth) {
+  if (isAdmin && !isPublic && !req.auth) {
     const url = new URL("/admin/login", req.nextUrl.origin);
     url.searchParams.set("callbackUrl", pathname);
     return Response.redirect(url);
   }
 
-  if (isLogin && req.auth) {
+  if (pathname === "/admin/login" && req.auth) {
     return Response.redirect(new URL("/admin", req.nextUrl.origin));
   }
 });

@@ -2,21 +2,58 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Layers, Settings } from "lucide-react";
+import {
+  LayoutDashboard,
+  Layers,
+  Settings,
+  Users,
+  Wrench,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
+type NavLink = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+};
+
+const BASE_LINKS: NavLink[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/categories", label: "Onglets", icon: Layers },
-  { href: "/admin/settings", label: "Réglages", icon: Settings },
+  { href: "/admin/settings", label: "Réglages", icon: Settings, exact: true },
 ];
 
-export function AdminNav() {
+export function AdminNav({
+  role,
+  isDev,
+}: {
+  role?: string;
+  isDev?: boolean;
+}) {
   const pathname = usePathname();
+
+  const links: NavLink[] = [...BASE_LINKS];
+  // Gestion des utilisateurs : administrateurs uniquement.
+  if (role === "admin") {
+    links.push({
+      href: "/admin/settings/users",
+      label: "Utilisateurs",
+      icon: Users,
+    });
+  }
+  // Outils développeur : uniquement hors production, administrateurs.
+  if (isDev && role === "admin") {
+    links.push({
+      href: "/admin/settings/dev",
+      label: "Développeur",
+      icon: Wrench,
+    });
+  }
 
   return (
     <nav className="flex flex-col gap-1">
-      {LINKS.map(({ href, label, icon: Icon, exact }) => {
+      {links.map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname.startsWith(href);
         return (
           <Link

@@ -35,6 +35,7 @@ export async function changePassword(raw: unknown) {
 
   const user = await db.query.users.findFirst({ where: eq(users.email, email) });
   if (!user) throw new Error("Utilisateur introuvable");
+  if (!user.passwordHash) throw new Error("Compte non activé");
 
   const ok = await verify(user.passwordHash, currentPassword);
   if (!ok) throw new Error("Mot de passe actuel incorrect");

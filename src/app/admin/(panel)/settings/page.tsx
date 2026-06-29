@@ -16,7 +16,8 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import { User, Palette, Globe, Lock } from "lucide-react";
+import Link from "next/link";
+import { User, Palette, Globe, Lock, Users, Wrench, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,52 @@ export default async function AdminSettingsPage() {
   ]);
   const themeRaw = settings?.theme;
   const theme = isThemeKey(themeRaw) ? themeRaw : "default";
+  const isAdmin = session?.user?.role === "admin";
+  const isDev = process.env.NODE_ENV !== "production";
 
   return (
     <div className="grid gap-6">
       <PageHeader title="Réglages" description="Profil, apparence et informations du site." />
+
+      {/* Menus avancés (selon les droits) */}
+      {(isAdmin || isDev) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {isAdmin && (
+            <Link
+              href="/admin/settings/users"
+              className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
+            >
+              <div className="flex items-center gap-3">
+                <Users className="size-5 text-primary" />
+                <div>
+                  <div className="font-medium">Utilisateurs</div>
+                  <div className="text-sm text-muted-foreground">
+                    Créer des comptes et gérer les droits.
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
+          )}
+          {isAdmin && isDev && (
+            <Link
+              href="/admin/settings/dev"
+              className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
+            >
+              <div className="flex items-center gap-3">
+                <Wrench className="size-5 text-primary" />
+                <div>
+                  <div className="font-medium">Développeur</div>
+                  <div className="text-sm text-muted-foreground">
+                    Outils locaux (base de données, contenu).
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Gauche : Compte */}

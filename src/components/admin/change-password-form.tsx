@@ -26,17 +26,20 @@ export function ChangePasswordForm() {
     }
     start(async () => {
       try {
-        await changePassword({ currentPassword: current, newPassword: next });
+        const res = await changePassword({
+          currentPassword: current,
+          newPassword: next,
+        });
+        if ("error" in res) {
+          toast.error(res.error);
+          return;
+        }
         toast.success("Mot de passe modifié");
         setCurrent("");
         setNext("");
         setConfirm("");
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Le mot de passe n'a pas pu être modifié. Réessayez.",
-        );
+      } catch {
+        toast.error("Le mot de passe n'a pas pu être modifié. Réessayez.");
       }
     });
   }

@@ -90,6 +90,10 @@ export function UsersManager({
     start(async () => {
       try {
         const res = await inviteUser({ email, firstName, lastName, role });
+        if ("error" in res) {
+          toast.error(res.error);
+          return;
+        }
         setEmail("");
         setFirstName("");
         setLastName("");
@@ -97,12 +101,8 @@ export function UsersManager({
         toast.success("Invitation créée");
         showLink(res.inviteToken);
         refresh();
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "L'invitation n'a pas pu être créée. Réessayez.",
-        );
+      } catch {
+        toast.error("L'invitation n'a pas pu être créée. Réessayez.");
       }
     });
   }
@@ -110,15 +110,17 @@ export function UsersManager({
   function changeRole(id: string, next: "admin" | "editor") {
     start(async () => {
       try {
-        await setUserRole(id, next);
+        const res = await setUserRole(id, next);
+        if ("error" in res) {
+          toast.error(res.error);
+          refresh(); // resynchronise l'affichage du rôle
+          return;
+        }
         toast.success("Rôle mis à jour");
         refresh();
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Le rôle n'a pas pu être modifié. Réessayez.",
-        );
+      } catch {
+        toast.error("Le rôle n'a pas pu être modifié. Réessayez.");
+        refresh();
       }
     });
   }
@@ -127,15 +129,15 @@ export function UsersManager({
     start(async () => {
       try {
         const res = await regenerateInvite(id);
+        if ("error" in res) {
+          toast.error(res.error);
+          return;
+        }
         toast.success("Nouveau lien généré");
         showLink(res.inviteToken);
         refresh();
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Le lien d'invitation n'a pas pu être régénéré. Réessayez.",
-        );
+      } catch {
+        toast.error("Le lien d'invitation n'a pas pu être régénéré. Réessayez.");
       }
     });
   }
@@ -149,15 +151,15 @@ export function UsersManager({
       return;
     start(async () => {
       try {
-        await deleteUser(id);
+        const res = await deleteUser(id);
+        if ("error" in res) {
+          toast.error(res.error);
+          return;
+        }
         toast.success("Utilisateur supprimé");
         refresh();
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "L'utilisateur n'a pas pu être supprimé. Réessayez.",
-        );
+      } catch {
+        toast.error("L'utilisateur n'a pas pu être supprimé. Réessayez.");
       }
     });
   }

@@ -29,14 +29,16 @@ export function SetPasswordForm({ token }: { token: string }) {
     }
     start(async () => {
       try {
-        await setPasswordFromInvite({ token, password: pwd });
+        const res = await setPasswordFromInvite({ token, password: pwd });
+        if ("error" in res) {
+          setError(res.error);
+          return;
+        }
         toast.success("Mot de passe défini, vous pouvez vous connecter.");
         router.push("/admin/login");
-      } catch (err) {
+      } catch {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Le mot de passe n'a pas pu être défini. Réessayez, ou demandez un nouveau lien d'invitation.",
+          "Le mot de passe n'a pas pu être défini. Réessayez, ou demandez un nouveau lien d'invitation.",
         );
       }
     });

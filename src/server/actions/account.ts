@@ -26,20 +26,29 @@ export async function updateProfile(raw: unknown) {
   revalidatePath("/admin");
 }
 
-export async function changePassword(raw: unknown) {
+/**
+ * Renvoie un résultat (et NE lance PAS) pour les erreurs « métier » destinées à
+ * l'utilisateur : en production, Next.js masque les messages des erreurs `throw`
+ * des Server Actions. Le `return { error }` traverse correctement la frontière.
+ */
+export async function changePassword(
+  raw: unknown,
+): Promise<{ ok: true } | { error: string }> {
   const sessionUser = await requireAdmin();
   const { currentPassword, newPassword } = changePasswordInput.parse(raw);
 
   const email = sessionUser.email;
-  if (!email) throw new Error("Votre session a expiré. Reconnectez-vous.");
+  if (!email) return { error: "Votre session a expiré. Reconnectez-vous." };
 
   const user = await db.query.users.findFirst({ where: eq(users.email, email) });
-  if (!user) throw new Error("Utilisateur introuvable");
-  if (!user.passwordHash) throw new Error("Compte non activé");
+  if (!user) return { error: "Compte introuvable. Reconnectez-vous." };
+  if (!user.passwordHash)
+    return { error: "Votre compte n'est pas encore activé." };
 
   const ok = await verify(user.passwordHash, currentPassword);
-  if (!ok) throw new Error("Mot de passe actuel incorrect");
+  if (!ok) return { error: "Le mot de passe actuel est incorrect." };
 
   const passwordHash = await hash(newPassword);
   await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+  return { ok: true };
 }

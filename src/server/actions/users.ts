@@ -39,7 +39,8 @@ export async function inviteUser(raw: unknown) {
   const existing = await db.query.users.findFirst({
     where: eq(users.email, data.email),
   });
-  if (existing) throw new Error("Un utilisateur avec cet email existe déjà.");
+  if (existing)
+    return { error: "Un compte utilise déjà cette adresse email." };
 
   const inviteToken = newToken();
   const name =
@@ -66,9 +67,9 @@ export async function inviteUser(raw: unknown) {
 export async function regenerateInvite(id: string) {
   await requireAdminRole();
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
-  if (!target) throw new Error("Utilisateur introuvable.");
+  if (!target) return { error: "Cet utilisateur n'existe plus." };
   if (target.passwordHash) {
-    throw new Error("Cet utilisateur a déjà activé son compte.");
+    return { error: "Ce compte est déjà activé : aucun lien n'est nécessaire." };
   }
   const inviteToken = newToken();
   await db.update(users).set({ inviteToken }).where(eq(users.id, id));
@@ -77,38 +78,52 @@ export async function regenerateInvite(id: string) {
 }
 
 /** Change le rôle d'un utilisateur (protège le dernier admin actif). */
-export async function setUserRole(id: string, role: (typeof ROLES)[number]) {
+export async function setUserRole(
+  id: string,
+  role: (typeof ROLES)[number],
+): Promise<{ ok: true } | { error: string }> {
   await requireAdminRole();
   z.enum(ROLES).parse(role);
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
-  if (!target) throw new Error("Utilisateur introuvable.");
+  if (!target) return { error: "Cet utilisateur n'existe plus." };
   if (
     target.role === "admin" &&
     role !== "admin" &&
     target.passwordHash &&
     (await activeAdminCount()) <= 1
   ) {
-    throw new Error("Impossible : c'est le dernier administrateur actif.");
+    return {
+      error:
+        "Impossible : c'est le dernier administrateur actif. Promouvez d'abord un autre compte en administrateur.",
+    };
   }
   await db.update(users).set({ role }).where(eq(users.id, id));
   revalidatePath("/admin/settings/users");
+  return { ok: true };
 }
 
 /** Supprime un utilisateur (jamais soi-même ni le dernier admin actif). */
-export async function deleteUser(id: string) {
+export async function deleteUser(
+  id: string,
+): Promise<{ ok: true } | { error: string }> {
   const me = await requireAdminRole();
-  if (me.id === id) throw new Error("Vous ne pouvez pas vous supprimer.");
+  if (me.id === id)
+    return { error: "Vous ne pouvez pas supprimer votre propre compte." };
   const target = await db.query.users.findFirst({ where: eq(users.id, id) });
-  if (!target) return;
+  if (!target) return { ok: true }; // déjà supprimé → rien à faire
   if (
     target.role === "admin" &&
     target.passwordHash &&
     (await activeAdminCount()) <= 1
   ) {
-    throw new Error("Impossible : c'est le dernier administrateur actif.");
+    return {
+      error:
+        "Impossible : c'est le dernier administrateur actif. Désigner un autre administrateur avant de supprimer ce compte.",
+    };
   }
   await db.delete(users).where(eq(users.id, id));
   revalidatePath("/admin/settings/users");
+  return { ok: true };
 }
 
 /** Profil de l'utilisateur connecté (prénom/nom). */
@@ -136,12 +151,18 @@ const setPwdSchema = z.object({
 });
 
 /** Définition du mot de passe via le jeton d'invitation (PAS d'auth : le jeton fait foi). */
-export async function setPasswordFromInvite(raw: unknown) {
+export async function setPasswordFromInvite(
+  raw: unknown,
+): Promise<{ email: string } | { error: string }> {
   const { token, password } = setPwdSchema.parse(raw);
   const target = await db.query.users.findFirst({
     where: and(eq(users.inviteToken, token), ne(users.email, "")),
   });
-  if (!target) throw new Error("Lien d'invitation invalide ou déjà utilisé.");
+  if (!target)
+    return {
+      error:
+        "Ce lien d'invitation est invalide ou a déjà été utilisé. Demandez-en un nouveau à un administrateur.",
+    };
   const passwordHash = await hash(password);
   await db
     .update(users)

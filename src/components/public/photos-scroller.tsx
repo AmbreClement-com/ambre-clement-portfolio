@@ -11,7 +11,7 @@ import dynamic from "next/dynamic";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { ResponsiveImage } from "@/components/public/responsive-image";
-import { pageZoom, pageOffset } from "@/lib/page-zoom";
+import { pageZoom, pageOffset, projectReveal } from "@/lib/page-zoom";
 import { cn } from "@/lib/utils";
 import type { Photo } from "@/server/db/schema";
 
@@ -155,6 +155,14 @@ export function PhotosScroller({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
+  // La galerie démarre TOUJOURS en haut : on neutralise tout scroll résiduel de la
+  // page précédente (le cinéma fait n×100vh) AVANT que Lenis ne lise la position à sa
+  // création — sinon la boucle de scroll infini le replie au milieu/bas (« atterrit
+  // en bas »). Au MONTAGE uniquement (pas sur un re-rendu / changement de colonnes).
+  useIsoLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Pendant un dézoom de page (`pageZoom < 1`) : clip du canvas au « 1er cadre » +
   // masquage de la grille d'images DOM. Sans ça, en arrivant d'une page NON-galerie,
   // la grille s'affiche pleine taille tant que curtains (import dynamique) charge.
@@ -162,6 +170,15 @@ export function PhotosScroller({
   // 1-2 frames de flash plein écran). Une boucle rAF entretient ensuite l'état.
   useIsoLayoutEffect(() => {
     const apply = () => {
+      // Ouverture de projet en cours → c'est `finishReveal` qui pilote le clip du
+      // canvas ; on n'y touche surtout pas (sinon on l'efface quand pageZoom ≈ 1, et
+      // la page déborde du cadre). On garde juste la grille DOM masquée tant que le
+      // WebGL n'a pas pris le relais (sinon elle peut clignoter plein écran).
+      if (projectReveal.active) {
+        const rt = rootRef.current;
+        if (rt && rt.style.opacity !== "0") rt.style.opacity = "0";
+        return;
+      }
       const z = pageZoom.value;
       const dz = z < 0.999;
       const cv = canvasRef.current;

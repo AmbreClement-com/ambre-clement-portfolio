@@ -26,3 +26,11 @@ export const pageOffset = { value: [0, 0] as [number, number] };
  * `MIN_ZOOM × viewport`, inset `(1 - MIN_ZOOM) / 2`.
  */
 export const MIN_ZOOM = 0.2;
+
+/**
+ * Vrai pendant l'ouverture custom d'un projet (cinéma → galerie). Pendant ce temps,
+ * c'est `finishReveal` (project-transition) qui PILOTE le `clipPath` du canvas de la
+ * galerie. La boucle d'entretien du clip dans `photos-scroller` doit donc rester en
+ * retrait (sinon elle efface le clip quand `pageZoom ≈ 1` → la page déborde du cadre).
+ */
+export const projectReveal = { active: false };

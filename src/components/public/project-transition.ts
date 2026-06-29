@@ -15,7 +15,7 @@
  *   l'atterrissage sur la couverture → illusion d'un seul et même objet.
  */
 import gsap from "gsap";
-import { pageZoom, pageOffset, MIN_ZOOM } from "@/lib/page-zoom";
+import { pageZoom, pageOffset, projectReveal, MIN_ZOOM } from "@/lib/page-zoom";
 
 const Z = MIN_ZOOM; // facteur de dézoom (0.2), identique à la transition de page
 
@@ -185,6 +185,7 @@ function destroyOverlay() {
   removeClone();
   stopReveal();
   revealActive = false;
+  projectReveal.active = false; // la galerie reprend la main sur son clip
   pageOffset.value = [0, 0]; // sécurité : ne jamais laisser un pan résiduel
 }
 
@@ -200,6 +201,9 @@ export function openProject(
     return;
   }
   projectSpeed = speed; // posé pour la galerie (finishReveal) + le cadre (SiteFrame)
+  // Pré-arme dès maintenant : quand la galerie montera, sa boucle de clip restera en
+  // retrait (c'est finishReveal qui pilote le clip pendant toute l'ouverture).
+  projectReveal.active = true;
   const start = containedRect(img);
   const src = img.currentSrc || img.src;
   // object-cover → en rétrécissant vers le cadre carré, la couverture le REMPLIT
@@ -440,6 +444,7 @@ export function finishReveal() {
         removeClone();
         revealTl = null;
         revealActive = false;
+        projectReveal.active = false; // révélation finie → la galerie reprend son clip
       },
     });
     revealTl.timeScale(projectSpeed); // vitesse globale (synchro avec le cadre/SiteFrame)

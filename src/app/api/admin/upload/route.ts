@@ -81,11 +81,22 @@ export async function POST(req: Request) {
   }
 
   const created = [];
-  const skipped: string[] = [];
+  // Chaque échec porte SON motif → le client peut dire quelle photo et pourquoi.
+  const skipped: { name: string; reason: string }[] = [];
 
   for (const file of files) {
-    if (!ACCEPTED.includes(file.type) || file.size > MAX_SIZE) {
-      skipped.push(file.name);
+    if (!ACCEPTED.includes(file.type)) {
+      skipped.push({
+        name: file.name,
+        reason: `format non pris en charge (${file.type || "type inconnu"})`,
+      });
+      continue;
+    }
+    if (file.size > MAX_SIZE) {
+      skipped.push({
+        name: file.name,
+        reason: `trop volumineux (${(file.size / 1048576).toFixed(1)} Mo > 25 Mo)`,
+      });
       continue;
     }
     try {
@@ -93,7 +104,7 @@ export async function POST(req: Request) {
       const buffer = Buffer.from(await file.arrayBuffer());
       const recvMs = Date.now() - t0;
       if (!isSupportedImage(buffer)) {
-        skipped.push(file.name);
+        skipped.push({ name: file.name, reason: "fichier image non reconnu" });
         continue;
       }
       const processed = await processAndUpload(buffer, file.name);
@@ -124,7 +135,10 @@ export async function POST(req: Request) {
         `[upload] échec pour "${file.name}":`,
         err instanceof Error ? `${err.message}\n${err.stack}` : err,
       );
-      skipped.push(file.name);
+      skipped.push({
+        name: file.name,
+        reason: err instanceof Error ? err.message : "erreur de traitement",
+      });
     }
   }
 

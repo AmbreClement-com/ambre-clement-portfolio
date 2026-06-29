@@ -5,6 +5,7 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { WelcomeOverlay } from "@/components/admin/welcome-overlay";
 import { auth } from "@/server/auth";
 import { getSettings } from "@/server/db/queries/projects";
+import { db } from "@/server/db";
 import { isThemeKey } from "@/lib/themes";
 
 export default async function AdminLayout({
@@ -12,9 +13,18 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, settings] = await Promise.all([
+  const [session, settings, cats, projs] = await Promise.all([
     auth(),
     getSettings().catch(() => null),
+    db.query.categories
+      .findMany({ orderBy: (c, { asc }) => [asc(c.displayOrder)] })
+      .catch(() => []),
+    db.query.projects
+      .findMany({
+        columns: { id: true, title: true },
+        orderBy: (p, { asc }) => [asc(p.displayOrder)],
+      })
+      .catch(() => []),
   ]);
 
   // Garde d'accès : toute route sous (panel) exige une session admin valide.
@@ -40,6 +50,12 @@ export default async function AdminLayout({
         <AdminNav
           role={session.user.role}
           isDev={process.env.NODE_ENV !== "production"}
+          categories={cats.map((c) => ({
+            id: c.id,
+            name: c.name,
+            type: c.type,
+          }))}
+          projects={projs}
         />
       </aside>
       <main className="flex-1 p-6 pb-28 md:p-8 md:pb-28">

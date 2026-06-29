@@ -95,6 +95,10 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
   );
   const [dragOver, setDragOver] = useState(false);
   const [deletingAll, startDeleteAll] = useTransition();
+  // Échecs du dernier upload : quelle photo + pourquoi (affiché sous la zone).
+  const [failures, setFailures] = useState<{ name: string; reason: string }[]>(
+    [],
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const showCover = Boolean(projectId); // couverture = notion propre aux projets
 
@@ -125,13 +129,14 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
     if (list.length === 0) return;
     setUploading(true);
     setProgress({ done: 0, total: list.length });
+    setFailures([]);
 
     // Ordre de départ = juste après la dernière photo existante. Chaque fichier porte
     // son ordre (startOrder + index) → upload PARALLÈLE sans course sur l'ordre.
     const startOrder =
       photos.reduce((m, p) => Math.max(m, p.displayOrder), -1) + 1;
 
-    const skipped: string[] = [];
+    const failed: { name: string; reason: string }[] = [];
     let added = 0;
     let done = 0;
     let cursor = 0;
@@ -154,10 +159,21 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
             method: "POST",
             body: fd,
           });
-          if (!res.ok) throw new Error();
+          if (!res.ok) {
+            // Récupère le motif renvoyé par le serveur si présent (400/401/500).
+            const reason = await res
+              .json()
+              .then((d) => d?.error)
+              .catch(() => null);
+            failed.push({
+              name: file.name,
+              reason: reason || `erreur serveur (${res.status})`,
+            });
+            continue;
+          }
           const data = (await res.json()) as {
             photos: Photo[];
-            skipped: string[];
+            skipped: { name: string; reason: string }[];
           };
           if (data.photos?.length) {
             added += data.photos.length;
@@ -167,9 +183,9 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
               ),
             );
           }
-          if (data.skipped?.length) skipped.push(...data.skipped);
+          if (data.skipped?.length) failed.push(...data.skipped);
         } catch {
-          skipped.push(file.name);
+          failed.push({ name: file.name, reason: "erreur réseau / envoi" });
         } finally {
           done++;
           setProgress({ done, total: list.length });
@@ -183,8 +199,12 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
 
     setUploading(false);
     setProgress(null);
+    setFailures(failed);
     if (added) toast.success(`${added} photo(s) ajoutée(s)`);
-    if (skipped.length) toast.warning(`Ignoré : ${skipped.join(", ")}`);
+    if (failed.length)
+      toast.error(
+        `${failed.length} photo(s) en échec — détail sous la zone d'envoi`,
+      );
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -255,6 +275,32 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
           onChange={(e) => e.target.files && upload(e.target.files)}
         />
       </div>
+
+      {failures.length > 0 && (
+        <div className="grid gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-destructive">
+              {failures.length} photo(s) non envoyée(s)
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setFailures([])}
+            >
+              Masquer
+            </Button>
+          </div>
+          <ul className="grid gap-1 text-xs">
+            {failures.map((f, i) => (
+              <li key={`${f.name}-${i}`} className="flex gap-2">
+                <span className="shrink-0 font-medium">{f.name}</span>
+                <span className="text-muted-foreground">— {f.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {photos.length > 0 && (
         <div className="flex items-center justify-between">

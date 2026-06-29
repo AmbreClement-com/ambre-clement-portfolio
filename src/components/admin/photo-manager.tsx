@@ -326,13 +326,9 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
       )}
 
       {photos.length > 0 && (
-        <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-          Sous chaque photo, le <span className="font-medium">texte alternatif</span>{" "}
-          la décrit en une courte phrase. Il aide Google à comprendre
-          l&apos;image et permet aux personnes malvoyantes (lecteurs
-          d&apos;écran) de savoir ce qu&apos;elle représente. Ex. « Future maman
-          en robe fleurie tenant une tasse ». Glissez les photos pour les
-          réordonner.
+        <p className="text-xs text-muted-foreground">
+          Le <span className="font-medium">texte alternatif</span> décrit la photo
+          (utile pour Google et l&apos;accessibilité). Glissez pour réordonner.
         </p>
       )}
 

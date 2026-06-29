@@ -79,11 +79,8 @@ export function ProjectForm({ project, categoryId }: Props) {
   return (
     <form onSubmit={submit} className="grid gap-4">
       <div className="grid gap-2">
-        <Label htmlFor="title">Titre du projet</Label>
+        <Label htmlFor="title">Titre</Label>
         <Input id="title" value={title} onChange={(e) => onTitle(e.target.value)} required />
-        <p className="text-xs text-muted-foreground">
-          Le nom affiché sur le site (ex. « Mariage à Dinard »).
-        </p>
       </div>
 
       <div className="grid gap-2">
@@ -98,51 +95,40 @@ export function ProjectForm({ project, categoryId }: Props) {
           required
         />
         <p className="text-xs text-muted-foreground">
-          La fin de l&apos;adresse web de ce projet. Générée automatiquement à partir du
-          titre — à modifier seulement si besoin. Uniquement des minuscules, des
-          chiffres et des tirets. Adresse :{" "}
-          <span className="font-mono">/projects/{slug || "…"}</span>
+          <span className="font-mono">/projects/{slug || "…"}</span> — générée
+          depuis le titre.
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="location">Lieu (facultatif)</Label>
+          <Label htmlFor="location">Lieu</Label>
           <Input
             id="location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             placeholder="Siargao, Philippines"
           />
-          <p className="text-xs text-muted-foreground">
-            Affiché sur la page du projet.
-          </p>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="date">Date (facultatif)</Label>
+          <Label htmlFor="date">Date</Label>
           <Input
             id="date"
             type="date"
             value={shotDate}
             onChange={(e) => setShotDate(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">
-            Date de la prise de vue.
-          </p>
         </div>
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="description">Description (facultatif)</Label>
+        <Label htmlFor="description">Description</Label>
         <Textarea
           id="description"
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
-        <p className="text-xs text-muted-foreground">
-          Quelques mots de présentation du projet.
-        </p>
       </div>
 
       <fieldset className="grid gap-4 rounded-lg border border-border p-4">
@@ -150,9 +136,7 @@ export function ProjectForm({ project, categoryId }: Props) {
           Référencement Google (SEO)
         </legend>
         <p className="-mt-1 text-xs text-muted-foreground">
-          Comment ce projet apparaît dans les résultats de recherche Google.
-          Facultatif : si vous laissez vide, le titre et la description du projet
-          sont utilisés automatiquement.
+          Titre et description affichés dans Google (facultatif).
         </p>
         <div className="grid gap-2">
           <Label htmlFor="seoTitle">Titre dans Google</Label>
@@ -163,10 +147,6 @@ export function ProjectForm({ project, categoryId }: Props) {
             onChange={(e) => setSeoTitle(e.target.value)}
             placeholder="Mariage à Dinard — Ambre Clément"
           />
-          <p className="text-xs text-muted-foreground">
-            Le titre cliquable affiché dans Google. Idéalement 50–60 caractères.
-            {seoTitle && ` (${seoTitle.length}/70)`}
-          </p>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="seoDescription">Description dans Google</Label>
@@ -176,25 +156,14 @@ export function ProjectForm({ project, categoryId }: Props) {
             maxLength={160}
             value={seoDescription}
             onChange={(e) => setSeoDescription(e.target.value)}
-            placeholder="Reportage photo d'un mariage intime à Dinard, en lumière naturelle…"
+            placeholder="Reportage d'un mariage intime à Dinard, en lumière naturelle…"
           />
-          <p className="text-xs text-muted-foreground">
-            Le petit texte affiché sous le titre dans Google. Donnez envie de
-            cliquer. Idéalement 120–155 caractères.
-            {seoDescription && ` (${seoDescription.length}/160)`}
-          </p>
         </div>
       </fieldset>
 
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <Switch id="published" checked={published} onCheckedChange={setPublished} />
-        <div className="grid gap-0.5">
-          <Label htmlFor="published">Publié</Label>
-          <p className="text-xs text-muted-foreground">
-            Activé : visible par tous sur le site. Désactivé (brouillon) : visible
-            seulement par vous dans l&apos;administration.
-          </p>
-        </div>
+        <Label htmlFor="published">Publié</Label>
       </div>
 
       <div>

@@ -240,11 +240,9 @@ export function UsersManager({
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Éditeur</span> : peut
-              gérer le contenu (projets, photos, onglets, tarifs), mais pas les
-              réglages du site ni les comptes utilisateurs.{" "}
-              <span className="font-medium text-foreground">Administrateur</span> :
-              accès total, y compris les utilisateurs et les réglages.
+              <span className="font-medium text-foreground">Éditeur</span> : contenu
+              uniquement · <span className="font-medium text-foreground">Administrateur</span>{" "}
+              : accès total (utilisateurs, réglages).
             </p>
             <div>
               <Button type="submit" disabled={pending}>

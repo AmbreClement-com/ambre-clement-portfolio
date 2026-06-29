@@ -151,27 +151,11 @@ export function CategoriesManager({ initial }: { initial: Cat[] }) {
         </Button>
       </form>
 
-      <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">
-          Choisissez le type de l&apos;onglet :
-        </p>
-        <ul className="mt-1.5 grid gap-1.5">
-          <li>
-            <span className="font-medium text-foreground">Photos</span> — une
-            galerie d&apos;images directe (ex. « Maternité »). Vous y déposez
-            simplement des photos.
-          </li>
-          <li>
-            <span className="font-medium text-foreground">Projets</span> — un
-            onglet qui regroupe plusieurs projets, chacun avec sa propre galerie
-            (ex. « Mariages » contenant « Mariage à Dinard », etc.).
-          </li>
-        </ul>
-        <p className="mt-2">
-          Le 1ᵉʳ onglet de la liste sert de page d&apos;accueil. Réorganisez
-          l&apos;ordre avec les flèches.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Photos</span> = galerie
+        d&apos;images · <span className="font-medium text-foreground">Projets</span>{" "}
+        = regroupe plusieurs projets. Le 1ᵉʳ onglet est la page d&apos;accueil.
+      </p>
 
       <ul className="grid gap-2">
         {cats.length === 0 && (

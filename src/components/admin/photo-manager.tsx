@@ -326,6 +326,17 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
       )}
 
       {photos.length > 0 && (
+        <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          Sous chaque photo, le <span className="font-medium">texte alternatif</span>{" "}
+          la décrit en une courte phrase. Il aide Google à comprendre
+          l&apos;image et permet aux personnes malvoyantes (lecteurs
+          d&apos;écran) de savoir ce qu&apos;elle représente. Ex. « Future maman
+          en robe fleurie tenant une tasse ». Glissez les photos pour les
+          réordonner.
+        </p>
+      )}
+
+      {photos.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={photos.map((p) => p.id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -445,7 +456,7 @@ function SortablePhoto({
         value={alt}
         onChange={(e) => setAlt(e.target.value)}
         onBlur={saveAlt}
-        placeholder="Texte alternatif (SEO)"
+        placeholder="Décrire la photo (ex. mère et bébé au coucher du soleil)"
         className="h-8 text-xs"
       />
 

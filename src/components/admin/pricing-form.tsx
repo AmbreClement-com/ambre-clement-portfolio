@@ -156,6 +156,9 @@ export function PricingForm({ pricing }: { pricing?: Pricing | null }) {
             onChange={(e) => setPrice(e.target.value)}
             placeholder="À partir de 335 € TTC"
           />
+          <p className="text-xs text-muted-foreground">
+            Texte libre, affiché tel quel (ex. « 335 € TTC », « Sur devis »).
+          </p>
         </div>
       </div>
 

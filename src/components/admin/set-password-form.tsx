@@ -57,6 +57,7 @@ export function SetPasswordForm({ token }: { token: string }) {
           autoComplete="new-password"
           minLength={8}
         />
+        <p className="text-xs text-muted-foreground">8 caractères minimum.</p>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="confirm">Confirmer le mot de passe</Label>

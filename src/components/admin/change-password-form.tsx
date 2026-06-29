@@ -68,6 +68,7 @@ export function ChangePasswordForm() {
           onChange={(e) => setNext(e.target.value)}
           required
         />
+        <p className="text-xs text-muted-foreground">8 caractères minimum.</p>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="confirm">Confirmer le nouveau mot de passe</Label>

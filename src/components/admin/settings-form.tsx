@@ -169,11 +169,19 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
       <div className="grid gap-2">
         <Label htmlFor="email">Email de contact</Label>
         <Input id="email" type="email" value={form.email} onChange={set("email")} />
+        <p className="text-xs text-muted-foreground">
+          Affiché sur la page Contact : c&apos;est l&apos;adresse où les
+          visiteurs vous écrivent (ex. bonjour@votresite.com).
+        </p>
       </div>
 
       {/* Réseaux sociaux — liste éditable et extensible */}
       <div className="grid gap-2">
         <Label>Réseaux sociaux</Label>
+        <p className="-mt-1 text-xs text-muted-foreground">
+          Liens vers vos profils (les icônes apparaissent sur le site). Collez
+          l&apos;adresse complète, ex. https://instagram.com/votre-compte.
+        </p>
         <div className="grid gap-2">
           {socials.length === 0 && (
             <p className="text-sm text-muted-foreground">
@@ -231,9 +239,15 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
       {/* Page Contact : image plein écran + titre + texte */}
       <div className="grid gap-3 rounded-lg border border-border p-4">
         <p className="text-sm font-medium">Page Contact</p>
+        <p className="-mt-1 text-xs text-muted-foreground">
+          Ce qui s&apos;affiche sur la page « Contact » du site.
+        </p>
 
         <div className="grid gap-2">
           <Label>Image plein écran</Label>
+          <p className="-mt-1 text-xs text-muted-foreground">
+            Grande photo en arrière-plan de la page Contact.
+          </p>
           <div className="flex items-center gap-3">
             <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
               {image?.variants.webp?.at(-1)?.url ? (
@@ -298,6 +312,9 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
             onChange={set("contactTitle")}
             placeholder="Donnons vie à vos images"
           />
+          <p className="text-xs text-muted-foreground">
+            La grande phrase d&apos;accroche affichée sur la page Contact.
+          </p>
         </div>
 
         <div className="grid gap-2">
@@ -308,6 +325,9 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
             value={form.contactText}
             onChange={set("contactText")}
           />
+          <p className="text-xs text-muted-foreground">
+            Court texte affiché sous le titre (facultatif).
+          </p>
         </div>
       </div>
       <div className="grid gap-2">
@@ -318,6 +338,10 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
           value={form.legalNotice}
           onChange={set("legalNotice")}
         />
+        <p className="text-xs text-muted-foreground">
+          Texte de la page « Mentions légales » : qui édite le site,
+          l&apos;hébergeur, etc. Obligatoire pour un site professionnel en France.
+        </p>
       </div>
 
       {/* Animations : on/off + intensité + aperçu live, avec explication */}

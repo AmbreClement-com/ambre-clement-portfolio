@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { X, Plus, ImageUp, RotateCcw } from "lucide-react";
 import { updateSettings, clearContactImage } from "@/server/actions/settings";
+import { downscaleForUpload } from "@/lib/downscale-image";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,7 +79,9 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
     setImgBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      // Redimensionne côté navigateur (≤2560 px) avant l'envoi : même rendu, mais
+      // on n'envoie pas l'original plein format (rapidité + fiabilité serveur).
+      fd.append("file", await downscaleForUpload(file));
       const res = await fetch("/api/admin/upload-contact", {
         method: "POST",
         body: fd,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import { createPricing, updatePricing } from "@/server/actions/pricing";
+import { downscaleForUpload } from "@/lib/downscale-image";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -33,7 +34,9 @@ export function PricingForm({ pricing }: { pricing?: Pricing | null }) {
     setImgBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      // Redimensionne côté navigateur (≤2560 px) avant l'envoi : même rendu, mais
+      // on n'envoie pas l'original plein format (rapidité + fiabilité serveur).
+      fd.append("file", await downscaleForUpload(file));
       const res = await fetch("/api/admin/upload-image", {
         method: "POST",
         body: fd,

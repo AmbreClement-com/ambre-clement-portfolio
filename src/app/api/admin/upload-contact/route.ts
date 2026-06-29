@@ -63,7 +63,11 @@ export async function POST(req: Request) {
       });
     revalidatePath("/", "layout");
     return NextResponse.json({ image });
-  } catch {
+  } catch (err) {
+    console.error(
+      `[upload-contact] échec pour "${file.name}":`,
+      err instanceof Error ? `${err.message}\n${err.stack}` : err,
+    );
     return NextResponse.json(
       { error: "L'image n'a pas pu être traitée. Réessayez avec un autre fichier." },
       { status: 500 },

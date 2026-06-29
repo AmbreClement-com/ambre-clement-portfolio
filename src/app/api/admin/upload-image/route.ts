@@ -56,7 +56,11 @@ export async function POST(req: Request) {
         height: processed.height,
       },
     });
-  } catch {
+  } catch (err) {
+    console.error(
+      `[upload-image] échec pour "${file.name}":`,
+      err instanceof Error ? `${err.message}\n${err.stack}` : err,
+    );
     return NextResponse.json(
       { error: "L'image n'a pas pu être traitée. Réessayez avec un autre fichier." },
       { status: 500 },

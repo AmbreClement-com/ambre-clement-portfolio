@@ -17,7 +17,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { User, Palette, Globe, Lock, Users, Wrench, ChevronRight } from "lucide-react";
+import { User, Palette, Globe, Lock, Users, Wrench, Tag, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +40,24 @@ export default async function AdminSettingsPage() {
     <div className="grid gap-6">
       <PageHeader title="Réglages" description="Profil, apparence et informations du site." />
 
-      {/* Menus avancés (selon les droits) */}
-      {(isAdmin || isDev) && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {isAdmin && (
+      {/* Menus avancés */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/admin/settings/tarifs"
+          className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
+        >
+          <div className="flex items-center gap-3">
+            <Tag className="size-5 text-primary" />
+            <div>
+              <div className="font-medium">Page Tarifs</div>
+              <div className="text-sm text-muted-foreground">
+                Contenu et publication de la page de tarification.
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        {isAdmin && (
             <Link
               href="/admin/settings/users"
               className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
@@ -77,8 +91,7 @@ export default async function AdminSettingsPage() {
               <ChevronRight className="size-4 text-muted-foreground" />
             </Link>
           )}
-        </div>
-      )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Gauche : Compte */}

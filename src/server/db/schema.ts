@@ -127,6 +127,18 @@ export type StoredImage = {
   height: number;
 };
 
+/** Contenu éditable de la page Tarifs (publiable ou non). */
+export type PricingContent = {
+  published: boolean;
+  navLabel: string; // libellé dans la navbar (ex. « Tarifs »)
+  title: string; // titre principal (ex. « Photographie maternité »)
+  subtitle: string; // sous-titre (ex. « Grossesse, post-partum, allaitement »)
+  intro: string; // paragraphes de présentation (sauts de ligne conservés)
+  includes: string[]; // « La séance comprend » (liste à puces)
+  price: string; // ex. « 335 € TTC »
+  image: StoredImage | null;
+};
+
 export const siteSettings = pgTable("site_settings", {
   id: integer("id").primaryKey().default(1), // singleton
   instagramUrl: text("instagram_url"), // legacy — repris dans `socials`
@@ -136,6 +148,8 @@ export const siteSettings = pgTable("site_settings", {
   contactText: text("contact_text"),
   contactImage: jsonb("contact_image").$type<StoredImage>(),
   legalNotice: text("legal_notice"),
+  // Page Tarifs (contenu + drapeau de publication). Null = jamais configurée.
+  pricing: jsonb("pricing").$type<PricingContent>(),
   // Réseaux sociaux éditables et extensibles (n'importe quel réseau du registre).
   socials: jsonb("socials").$type<SocialLink[]>().notNull().default([]),
   // Réglages des animations (on/off + intensité par effet).

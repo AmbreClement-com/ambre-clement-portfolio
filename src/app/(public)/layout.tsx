@@ -9,6 +9,7 @@ import {
   resolveAnimations,
   TRANSITION_SPEED_FACTOR,
 } from "@/lib/animations";
+import { resolvePricing } from "@/lib/pricing";
 
 export default async function PublicLayout({
   children,
@@ -38,10 +39,17 @@ export default async function PublicLayout({
   const transitionSpeed = TRANSITION_SPEED_FACTOR[anims.pageTransitionSpeed];
   const loaderSpeed = TRANSITION_SPEED_FACTOR[anims.loaderSpeed];
 
+  // Page Tarifs : n'apparaît dans la navbar QUE si elle est publiée.
+  const pricing = resolvePricing(settings?.pricing);
+  const pricingNav = pricing.published
+    ? { href: "/tarifs", label: pricing.navLabel || "Tarifs" }
+    : null;
+
   return (
     <FrameProvider>
       <SiteHeader
         categories={categories}
+        pricingNav={pricingNav}
         transitionsEnabled={anims.pageTransitionEnabled}
         speed={transitionSpeed}
       />

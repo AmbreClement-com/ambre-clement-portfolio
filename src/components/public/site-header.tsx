@@ -72,10 +72,12 @@ function fitFontSize(text: string, maxWidth: number, cap: number): number {
  */
 export function SiteHeader({
   categories,
+  pricingNav = null,
   transitionsEnabled,
   speed,
 }: {
   categories: NavCategory[];
+  pricingNav?: { href: string; label: string } | null;
   transitionsEnabled: boolean;
   speed: number;
 }) {
@@ -103,6 +105,7 @@ export function SiteHeader({
       href: i === 0 ? "/" : `/${c.slug}`,
       label: c.name,
     })),
+    ...(pricingNav ? [pricingNav] : []), // « Tarifs » seulement si publiée
     { href: "/contact", label: "Contact" },
   ];
 
@@ -130,8 +133,9 @@ export function SiteHeader({
     categories.forEach((c, i) => {
       map[i === 0 ? "/" : `/${c.slug}`] = c.name;
     });
+    if (pricingNav) map[pricingNav.href] = pricingNav.label;
     routesRef.current = map;
-  }, [categories]);
+  }, [categories, pricingNav]);
   const labelFor = (p: string) => {
     if (routesRef.current[p]) return routesRef.current[p];
     const seg = p.split("/").filter(Boolean).pop() ?? "";

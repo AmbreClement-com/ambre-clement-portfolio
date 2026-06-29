@@ -116,7 +116,18 @@ export default function SplashCursor({
       COLOR
     };
 
-    const { gl, ext } = getWebGLContext(canvas);
+    // WebGL indisponible (vieux navigateur / accélération désactivée) : on abandonne
+    // SILENCIEUSEMENT l'effet de curseur — la page Contact reste pleinement utilisable
+    // (sinon le throw remonterait à l'error boundary et casserait toute la page).
+    const ctx = (() => {
+      try {
+        return getWebGLContext(canvas);
+      } catch {
+        return null;
+      }
+    })();
+    if (!ctx) return;
+    const { gl, ext } = ctx;
     if (!gl || !ext) return;
 
     if (!ext.supportLinearFiltering) {

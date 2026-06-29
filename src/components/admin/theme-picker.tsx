@@ -21,7 +21,11 @@ export function ThemePicker({ current }: { current: ThemeKey }) {
         await updateTheme(key);
         toast.success("Thème mis à jour");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur");
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "Le thème n'a pas pu être appliqué. Réessayez.",
+        );
       }
     });
   }

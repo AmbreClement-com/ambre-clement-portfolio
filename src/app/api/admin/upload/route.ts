@@ -33,7 +33,10 @@ function isSupportedImage(buf: Buffer): boolean {
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Votre session a expiré. Reconnectez-vous puis réessayez." },
+      { status: 401 },
+    );
   }
 
   const form = await req.formData();
@@ -57,12 +60,18 @@ export async function POST(req: Request) {
 
   if (!projectId && !categoryId) {
     return NextResponse.json(
-      { error: "projectId ou categoryId requis" },
+      {
+        error:
+          "Destination de l'upload introuvable. Rechargez la page puis réessayez.",
+      },
       { status: 400 },
     );
   }
   if (files.length === 0) {
-    return NextResponse.json({ error: "Aucun fichier" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Aucune image reçue. Sélectionnez au moins un fichier." },
+      { status: 400 },
+    );
   }
 
   // Ordre de départ : explicite (client) sinon juste après le dernier de la cible.

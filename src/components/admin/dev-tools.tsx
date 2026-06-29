@@ -43,7 +43,11 @@ export function DevTools({ stats }: { stats: Stats }) {
         toast.success("Contenu vidé");
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Le contenu n'a pas pu être vidé. Réessayez.",
+        );
       }
     });
   }
@@ -99,7 +103,9 @@ export function DevTools({ stats }: { stats: Stats }) {
                 navigator.clipboard
                   .writeText(RECLONE_CMD)
                   .then(() => toast.success("Commande copiée"))
-                  .catch(() => toast.error("Impossible de copier"));
+                  .catch(() =>
+                    toast.error("Copie impossible. Sélectionnez la commande et copiez-la manuellement."),
+                  );
               }}
             >
               <Copy className="size-4" />

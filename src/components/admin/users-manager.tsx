@@ -98,7 +98,11 @@ export function UsersManager({
         showLink(res.inviteToken);
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "L'invitation n'a pas pu être créée. Réessayez.",
+        );
       }
     });
   }
@@ -110,7 +114,11 @@ export function UsersManager({
         toast.success("Rôle mis à jour");
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Le rôle n'a pas pu être modifié. Réessayez.",
+        );
       }
     });
   }
@@ -123,20 +131,33 @@ export function UsersManager({
         showLink(res.inviteToken);
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Le lien d'invitation n'a pas pu être régénéré. Réessayez.",
+        );
       }
     });
   }
 
   function remove(id: string, label: string) {
-    if (!confirm(`Supprimer ${label} ? Cette action est définitive.`)) return;
+    if (
+      !confirm(
+        `Supprimer définitivement le compte « ${label} » ? Cette personne perdra immédiatement son accès.`,
+      )
+    )
+      return;
     start(async () => {
       try {
         await deleteUser(id);
         toast.success("Utilisateur supprimé");
         refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "L'utilisateur n'a pas pu être supprimé. Réessayez.",
+        );
       }
     });
   }
@@ -148,7 +169,7 @@ export function UsersManager({
       setCopied(true);
       toast.success("Lien copié");
     } catch {
-      toast.error("Impossible de copier");
+      toast.error("Copie impossible. Sélectionnez le lien et copiez-le manuellement.");
     }
   }
 

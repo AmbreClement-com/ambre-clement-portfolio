@@ -12,7 +12,7 @@ export async function updateProfile(raw: unknown) {
   const sessionUser = await requireAdmin();
   const { firstName, lastName } = profileInput.parse(raw);
   const email = sessionUser.email;
-  if (!email) throw new Error("Session invalide");
+  if (!email) throw new Error("Votre session a expiré. Reconnectez-vous.");
 
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || null;
   await db
@@ -31,7 +31,7 @@ export async function changePassword(raw: unknown) {
   const { currentPassword, newPassword } = changePasswordInput.parse(raw);
 
   const email = sessionUser.email;
-  if (!email) throw new Error("Session invalide");
+  if (!email) throw new Error("Votre session a expiré. Reconnectez-vous.");
 
   const user = await db.query.users.findFirst({ where: eq(users.email, email) });
   if (!user) throw new Error("Utilisateur introuvable");

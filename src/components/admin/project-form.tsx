@@ -67,7 +67,11 @@ export function ProjectForm({ project, categoryId }: Props) {
           router.push(`/admin/projects/${row!.id}`);
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Le projet n'a pas pu être enregistré. Réessayez.",
+        );
       }
     });
   }

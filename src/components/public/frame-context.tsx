@@ -23,6 +23,9 @@ export type FrameMetaData = {
     nextSlug: string | null;
     prevTitle: string | null;
     nextTitle: string | null;
+    /** Numéro (position) du projet précédent / suivant — affiché entre les deux. */
+    prevNum: number | null;
+    nextNum: number | null;
   } | null;
   /**
    * Infos du projet courant, rendues dans le cadre comme le HUD du cinéma
@@ -79,6 +82,8 @@ export function FrameMeta({
   navNext = null,
   navPrevTitle = null,
   navNextTitle = null,
+  navPrevNum = null,
+  navNextNum = null,
   projectTitle = null,
   projectLocation = null,
   projectYear = null,
@@ -95,6 +100,8 @@ export function FrameMeta({
   navNext?: string | null;
   navPrevTitle?: string | null;
   navNextTitle?: string | null;
+  navPrevNum?: number | null;
+  navNextNum?: number | null;
   /** Infos projet (HUD droite, comme le cinéma) — primitives pour deps stables. */
   projectTitle?: string | null;
   projectLocation?: string | null;
@@ -112,6 +119,8 @@ export function FrameMeta({
             nextSlug: navNext,
             prevTitle: navPrevTitle,
             nextTitle: navNextTitle,
+            prevNum: navPrevNum,
+            nextNum: navNextNum,
           }
         : null;
     const projectInfo =
@@ -139,6 +148,8 @@ export function FrameMeta({
     navNext,
     navPrevTitle,
     navNextTitle,
+    navPrevNum,
+    navNextNum,
     projectTitle,
     projectLocation,
     projectYear,

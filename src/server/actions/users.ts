@@ -114,7 +114,7 @@ export async function deleteUser(id: string) {
 /** Profil de l'utilisateur connecté (prénom/nom). */
 export async function updateMyProfile(raw: unknown) {
   const me = await requireAdmin();
-  if (!me.id) throw new Error("Session invalide");
+  if (!me.id) throw new Error("Votre session a expiré. Reconnectez-vous.");
   const { firstName, lastName } = z
     .object({
       firstName: z.string().trim().max(60).optional(),

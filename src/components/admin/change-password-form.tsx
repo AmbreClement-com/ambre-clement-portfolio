@@ -16,8 +16,12 @@ export function ChangePasswordForm() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (next.length < 8) {
+      toast.error("Le nouveau mot de passe doit faire au moins 8 caractères.");
+      return;
+    }
     if (next !== confirm) {
-      toast.error("La confirmation ne correspond pas");
+      toast.error("Le nouveau mot de passe et sa confirmation sont différents.");
       return;
     }
     start(async () => {
@@ -28,7 +32,11 @@ export function ChangePasswordForm() {
         setNext("");
         setConfirm("");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Le mot de passe n'a pas pu être modifié. Réessayez.",
+        );
       }
     });
   }

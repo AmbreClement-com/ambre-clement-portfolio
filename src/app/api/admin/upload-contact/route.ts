@@ -28,21 +28,35 @@ function isSupportedImage(buf: Buffer): boolean {
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Votre session a expiré. Reconnectez-vous puis réessayez." },
+      { status: 401 },
+    );
   }
 
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Fichier requis" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Aucune image sélectionnée." },
+      { status: 400 },
+    );
   }
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "Fichier trop volumineux" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: `Image trop lourde (${(file.size / 1048576).toFixed(1)} Mo). Maximum 25 Mo.`,
+      },
+      { status: 400 },
+    );
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   if (!isSupportedImage(buffer)) {
-    return NextResponse.json({ error: "Image non supportée" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Format d'image non pris en charge (JPEG, PNG, WebP, AVIF…)." },
+      { status: 400 },
+    );
   }
 
   try {
@@ -63,6 +77,9 @@ export async function POST(req: Request) {
     revalidatePath("/", "layout");
     return NextResponse.json({ image });
   } catch {
-    return NextResponse.json({ error: "Échec du traitement" }, { status: 500 });
+    return NextResponse.json(
+      { error: "L'image n'a pas pu être traitée. Réessayez avec un autre fichier." },
+      { status: 500 },
+    );
   }
 }

@@ -50,7 +50,12 @@ export default async function AdminDashboard({
   const d = await getAnalytics(range).catch(() => null);
 
   if (!d) {
-    return <p className="text-muted-foreground">Tableau de bord indisponible.</p>;
+    return (
+      <p className="text-muted-foreground">
+        Le tableau de bord est momentanément indisponible. Réessayez dans un
+        instant.
+      </p>
+    );
   }
 
   const t = d.totals;

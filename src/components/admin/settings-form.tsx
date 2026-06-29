@@ -84,12 +84,17 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         body: fd,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "Échec de l'upload");
+      if (!res.ok)
+        throw new Error(data?.error ?? "L'image n'a pas pu être envoyée.");
       setImage(data.image as StoredImage);
       toast.success("Image enregistrée");
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erreur d'upload");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "L'image n'a pas pu être envoyée. Réessayez.",
+      );
     } finally {
       setImgBusy(false);
     }
@@ -102,7 +107,11 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
       setImage(null);
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erreur");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "L'image n'a pas pu être retirée. Réessayez.",
+      );
     } finally {
       setImgBusy(false);
     }
@@ -146,7 +155,11 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         router.refresh();
       } catch (err) {
         console.error("Échec de l'enregistrement des réglages :", err);
-        toast.error(err instanceof Error ? err.message : "Erreur à l'enregistrement");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Les réglages n'ont pas pu être enregistrés. Réessayez.",
+        );
       }
     });
   }

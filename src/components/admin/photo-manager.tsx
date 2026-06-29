@@ -115,7 +115,7 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
         setPhotos([]);
         toast.success("Toutes les photos ont été supprimées");
       } catch {
-        toast.error("Échec de la suppression");
+        toast.error("Les photos n'ont pas pu être supprimées. Réessayez.");
       }
     });
   }
@@ -215,7 +215,7 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
     const next = arrayMove(photos, oldIndex, newIndex);
     setPhotos(next);
     reorderPhotos({ ids: next.map((p) => p.id) }).catch(() =>
-      toast.error("Échec du réordonnancement"),
+      toast.error("Le nouvel ordre n'a pas pu être enregistré. Réessayez."),
     );
   }
 
@@ -345,7 +345,9 @@ export function PhotoManager({ initial, projectId, categoryId }: Props) {
                   }
                   onCover={() => {
                     if (!projectId) return;
-                    setCover(projectId, photo.id).catch(() => toast.error("Erreur"));
+                    setCover(projectId, photo.id).catch(() =>
+                      toast.error("La photo de couverture n'a pas pu être définie."),
+                    );
                     setPhotos((prev) => [
                       photo,
                       ...prev.filter((p) => p.id !== photo.id),
@@ -392,21 +394,21 @@ function SortablePhoto({
       try {
         await updatePhotoAlt({ id: photo.id, altText: alt.trim() });
         onAltSaved(alt.trim());
-        toast.success("Alt enregistré");
+        toast.success("Texte alternatif enregistré");
       } catch {
-        toast.error("Erreur");
+        toast.error("Le texte alternatif n'a pas pu être enregistré. Réessayez.");
       }
     });
   }
 
   function remove() {
-    if (!confirm("Supprimer cette photo ?")) return;
+    if (!confirm("Supprimer définitivement cette photo ?")) return;
     start(async () => {
       try {
         await deletePhoto(photo.id);
         onDeleted();
       } catch {
-        toast.error("Erreur");
+        toast.error("La photo n'a pas pu être supprimée. Réessayez.");
       }
     });
   }

@@ -674,7 +674,9 @@ export function SiteFrame({
             <span className="opacity-0">←</span>
           )}
           <span className="shrink-0 tabular-nums opacity-80">
-            {pad2(meta.nav.index)} / {pad2(meta.nav.total)}
+            {meta.nav.prevNum != null && meta.nav.nextNum != null
+              ? `${pad2(meta.nav.prevNum)} / ${pad2(meta.nav.nextNum)}`
+              : `${pad2(meta.nav.index)} / ${pad2(meta.nav.total)}`}
           </span>
           {meta.nav.nextSlug ? (
             <Link

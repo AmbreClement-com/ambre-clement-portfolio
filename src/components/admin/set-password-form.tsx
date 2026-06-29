@@ -33,7 +33,11 @@ export function SetPasswordForm({ token }: { token: string }) {
         toast.success("Mot de passe défini, vous pouvez vous connecter.");
         router.push("/admin/login");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Erreur");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Le mot de passe n'a pas pu être défini. Réessayez, ou demandez un nouveau lien d'invitation.",
+        );
       }
     });
   }

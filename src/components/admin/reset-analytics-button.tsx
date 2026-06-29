@@ -22,10 +22,10 @@ export function ResetAnalyticsButton() {
     start(async () => {
       try {
         await resetAnalytics();
-        toast.success("Statistiques réinitialisées");
+        toast.success("Statistiques remises à zéro");
         router.refresh();
       } catch {
-        toast.error("Erreur");
+        toast.error("La remise à zéro a échoué. Réessayez.");
       }
     });
   }

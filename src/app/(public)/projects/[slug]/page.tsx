@@ -69,8 +69,13 @@ export default async function ProjectPage({ params }: Params) {
     siblings.findIndex((p) => p.id === project.id),
   );
   const total = siblings.length;
-  const prevP = total > 1 ? siblings[(cur - 1 + total) % total] : null;
-  const nextP = total > 1 ? siblings[(cur + 1) % total] : null;
+  const prevIdx = (cur - 1 + total) % total;
+  const nextIdx = (cur + 1) % total;
+  const prevP = total > 1 ? siblings[prevIdx] : null;
+  const nextP = total > 1 ? siblings[nextIdx] : null;
+  // Numéros (positions) affichés au centre du footer : celui du préc. / celui du suiv.
+  const prevNum = total > 1 ? prevIdx + 1 : null;
+  const nextNum = total > 1 ? nextIdx + 1 : null;
 
   const jsonLd = projectJsonLd({
     title: project.title,
@@ -108,6 +113,8 @@ export default async function ProjectPage({ params }: Params) {
           navNext={nextP?.slug ?? null}
           navPrevTitle={prevP?.title ?? null}
           navNextTitle={nextP?.title ?? null}
+          navPrevNum={prevNum}
+          navNextNum={nextNum}
           projectTitle={project.title}
           projectLocation={project.location}
           projectYear={projectYear}

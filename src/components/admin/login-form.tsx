@@ -26,7 +26,7 @@ export function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Identifiants invalides");
+      setError("Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.");
       return;
     }
     // déclenche l'animation de bienvenue sur la page suivante

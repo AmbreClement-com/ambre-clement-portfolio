@@ -70,7 +70,11 @@ export function CategoriesManager({ initial }: { initial: Cat[] }) {
         await fn();
         if (ok) toast.success(ok);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur");
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "L'action n'a pas pu être effectuée. Réessayez.",
+        );
       }
     });
 
@@ -85,7 +89,11 @@ export function CategoriesManager({ initial }: { initial: Cat[] }) {
         if (row) setCats((c) => [...c, { id: row.id, name: row.name, type: row.type }]);
         toast.success("Onglet créé");
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Erreur");
+        toast.error(
+          e instanceof Error
+            ? e.message
+            : "L'onglet n'a pas pu être créé. Réessayez.",
+        );
       }
     });
   }
@@ -104,7 +112,12 @@ export function CategoriesManager({ initial }: { initial: Cat[] }) {
   }
 
   function remove(id: string, name: string) {
-    if (!confirm(`Supprimer l'onglet « ${name} » et son contenu ?`)) return;
+    if (
+      !confirm(
+        `Supprimer l'onglet « ${name} » ? Toutes ses photos et projets seront aussi supprimés. Cette action est définitive.`,
+      )
+    )
+      return;
     setCats((c) => c.filter((x) => x.id !== id));
     run(() => deleteCategory(id), "Onglet supprimé");
   }

@@ -44,6 +44,19 @@ function renderScramble(el: HTMLElement, from: string, to: string, p: number) {
 }
 
 /**
+ * Taille de police qui fait TENIR `text` ENTIER dans `maxWidth`, plafonnée à `cap`.
+ * Le titre est en police MONOSPACE (font-mono) + interlettrage tracking-[0.18em] →
+ * chaque caractère avance d'~0.8em. On en déduit la taille max sans dépendre d'une
+ * mesure DOM (le conteneur flex centré fausse `scrollWidth`).
+ */
+const CHAR_ADVANCE_EM = 0.8; // mono (~0.6em) + tracking 0.18em + petite marge
+function fitFontSize(text: string, maxWidth: number, cap: number): number {
+  const chars = Math.max(1, text.length);
+  const fit = maxWidth / (chars * CHAR_ADVANCE_EM);
+  return Math.max(1, Math.min(cap, Math.floor(fit)));
+}
+
+/**
  * Navbar « flottante » qui EST sa propre transition de page (un seul composant,
  * aucun panneau/loader séparé). Au clic sur un lien interne :
  *  1) « AMBRE CLÉMENT » glisse au centre, les points/menu se replient ;
@@ -362,9 +375,16 @@ export function SiteHeader({
         { left: fLeft, top: fTop, width: fW, height: fH, borderRadius: 0, duration: 0.5, ease: "power2.out" },
         1.05,
       );
+      // Taille PLAFONNÉE pour que le nom ENTIER tienne dans le cadre (un titre long
+      // déborderait de la pilule en overflow:hidden et serait rogné).
+      const bigSize = fitFontSize(
+        text,
+        fW * 0.9,
+        Math.min(fW * 0.13, fH * 0.22),
+      );
       tl.to(
         title,
-        { fontSize: Math.min(fW * 0.13, fH * 0.22), duration: 0.5, ease: "power2.out" },
+        { fontSize: bigSize, duration: 0.5, ease: "power2.out" },
         1.05,
       );
       // PALIER DE LECTURE : le nom posé (~1.5) reste lisible un court instant avant
@@ -435,7 +455,7 @@ export function SiteHeader({
         gsap.set(title, {
           autoAlpha: 1,
           x: 0,
-          fontSize: Math.min(fW * 0.13, fH * 0.22),
+          fontSize: fitFontSize(LOGO, fW * 0.9, Math.min(fW * 0.13, fH * 0.22)),
         });
         renderScramble(title, LOGO, LOGO, 1);
       }

@@ -29,7 +29,11 @@ export function ProfileForm({
         toast.success("Profil enregistré");
         router.refresh();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erreur");
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Le profil n'a pas pu être enregistré. Réessayez.",
+        );
       }
     });
   }

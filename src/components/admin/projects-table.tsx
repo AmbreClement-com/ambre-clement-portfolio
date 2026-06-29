@@ -50,7 +50,7 @@ export function ProjectsTable({ initial }: { initial: ProjectRow[] }) {
     );
     setRows(next);
     reorderProjects({ ids: next.map((r) => r.id) }).catch(() =>
-      toast.error("Échec du réordonnancement"),
+      toast.error("Le nouvel ordre n'a pas pu être enregistré. Réessayez."),
     );
   }
 
@@ -89,15 +89,24 @@ function Row({ row, onDeleted }: { row: ProjectRow; onDeleted: () => void }) {
     setPublished(v);
     togglePublish(row.id, v).catch(() => {
       setPublished(!v);
-      toast.error("Erreur");
+      toast.error(
+        v
+          ? "La publication a échoué. Réessayez."
+          : "Le passage en brouillon a échoué. Réessayez.",
+      );
     });
   }
 
   function remove() {
-    if (!confirm(`Supprimer « ${row.title} » ?`)) return;
+    if (
+      !confirm(
+        `Supprimer le projet « ${row.title} » et toutes ses photos ? Cette action est définitive.`,
+      )
+    )
+      return;
     deleteProject(row.id)
       .then(onDeleted)
-      .catch(() => toast.error("Erreur"));
+      .catch(() => toast.error("Le projet n'a pas pu être supprimé. Réessayez."));
   }
 
   return (

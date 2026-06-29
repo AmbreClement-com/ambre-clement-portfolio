@@ -32,7 +32,9 @@ export function ResponsiveImage({
 
   return (
     <picture>
-      <source type="image/avif" srcSet={srcset(variants.avif)} sizes={sizes} />
+      {variants.avif.length > 0 && (
+        <source type="image/avif" srcSet={srcset(variants.avif)} sizes={sizes} />
+      )}
       <source type="image/webp" srcSet={srcset(variants.webp)} sizes={sizes} />
       <img
         src={fallback}

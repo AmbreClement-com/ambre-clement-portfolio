@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { putObject } from "./storage";
 import type { ImageVariants } from "@/server/db/schema";
 
-/** Largeurs responsive générées pour chaque image. */
-const WIDTHS = [480, 768, 1080, 1600, 2400] as const;
+/** Largeurs responsive générées pour chaque image (WebP). */
+const WIDTHS = [480, 1080, 1600, 2400] as const;
 
 export type ProcessedImage = {
   storageKey: string;
@@ -17,13 +17,13 @@ export type ProcessedImage = {
 /**
  * Pipeline d'optimisation :
  *  1. corrige l'orientation EXIF puis supprime les métadonnées
- *  2. ré-encode en AVIF + WebP à plusieurs largeurs — TOUS les encodes en PARALLÈLE
- *     (libvips est multi-thread) au lieu de séquentiellement → bien plus rapide
+ *  2. ré-encode en WebP (q80) à plusieurs largeurs — TOUS les encodes en PARALLÈLE
+ *     (libvips est multi-thread) → upload rapide. L'AVIF a été retiré de l'upload :
+ *     ~5-10× plus lent à encoder, il plombait le temps d'upload sur le CPU de Vercel.
+ *     Le WebP q80 est visuellement parfait pour le web (fichiers ~15-20% plus gros
+ *     que l'AVIF, sans différence visible).
  *  3. génère un LQIP (placeholder flou base64) anti-CLS
- *  4. pousse l'original + les dérivés sur R2, là aussi EN PARALLÈLE
- *
- * Qualités élevées (AVIF 60 / WebP 80) : on privilégie la qualité d'image ; la
- * performance vient du parallélisme (ici) et de l'upload 1-photo-par-requête (client).
+ *  4. pousse l'original + les dérivés sur le store, là aussi EN PARALLÈLE
  */
 export async function processAndUpload(
   input: Buffer,
@@ -62,46 +62,37 @@ export async function processAndUpload(
   const targetWidths: number[] = WIDTHS.filter((w) => !width || w <= width);
   if (targetWidths.length === 0 && width) targetWidths.push(width);
 
-  // ── ENCODAGE (séquentiel, mémoire bornée) puis UPLOAD (tout en parallèle) ─────────
-  // AVIF `effort: 2` : ~7× plus rapide qu'effort 4 (le défaut) pour une qualité
-  // IDENTIQUE — l'effort ne joue QUE sur la taille du fichier, pas sur la qualité
-  // visuelle. On encode largeur par largeur (2 encodes max simultanés → mémoire bornée,
-  // pas d'OOM serverless), on collecte les buffers, PUIS on pousse l'original + toutes
-  // les variantes EN PARALLÈLE sur le store (réseau) → upload quasi instantané.
+  // ── ENCODAGE (WebP, TOUT en parallèle) puis UPLOAD (tout en parallèle) ────────────
+  // WebP est rapide → on encode toutes les largeurs + l'original + le LQIP en parallèle
+  // (libvips multi-thread, mémoire bornée par le plafond 2560 px). Puis upload parallèle.
   const storageKey = `${prefix}/original.jpg`;
-  const encoded: { fmt: "avif" | "webp"; w: number; buf: Buffer; ct: string }[] =
-    [];
-  for (const w of targetWidths) {
-    const resized = base.clone().resize({ width: w, withoutEnlargement: true });
-    const [avifBuf, webpBuf] = await Promise.all([
-      resized.clone().avif({ quality: 60, effort: 2 }).toBuffer(),
-      resized.clone().webp({ quality: 80 }).toBuffer(),
-    ]);
-    encoded.push({ fmt: "avif", w, buf: avifBuf, ct: "image/avif" });
-    encoded.push({ fmt: "webp", w, buf: webpBuf, ct: "image/webp" });
-  }
-  const originalBuf = await base.clone().toBuffer();
-  const lqipBuf = await base
-    .clone()
-    .resize({ width: 24 })
-    .webp({ quality: 30 })
-    .toBuffer();
-
-  // Upload de l'original + toutes les variantes EN PARALLÈLE (réseau, peu de mémoire).
-  const variants: ImageVariants = { avif: [], webp: [] };
-  const [uploaded] = await Promise.all([
+  const [webpBufs, originalBuf, lqipBuf] = await Promise.all([
     Promise.all(
-      encoded.map(async (e) => ({
-        fmt: e.fmt,
+      targetWidths.map(async (w) => ({
+        w,
+        buf: await base
+          .clone()
+          .resize({ width: w, withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toBuffer(),
+      })),
+    ),
+    base.clone().toBuffer(),
+    base.clone().resize({ width: 24 }).webp({ quality: 30 }).toBuffer(),
+  ]);
+
+  // Upload de l'original + toutes les variantes WebP EN PARALLÈLE.
+  const variants: ImageVariants = { avif: [], webp: [] };
+  const [uploadedWebp] = await Promise.all([
+    Promise.all(
+      webpBufs.map(async (e) => ({
         width: e.w,
-        url: await putObject(`${prefix}/${e.w}.${e.fmt}`, e.buf, e.ct),
+        url: await putObject(`${prefix}/${e.w}.webp`, e.buf, "image/webp"),
       })),
     ),
     putObject(storageKey, originalBuf, "image/jpeg"),
   ]);
-  for (const v of uploaded) variants[v.fmt].push({ width: v.width, url: v.url });
-  variants.avif.sort((a, b) => a.width - b.width);
-  variants.webp.sort((a, b) => a.width - b.width);
+  variants.webp = uploadedWebp.sort((a, b) => a.width - b.width);
 
   const lqip = `data:image/webp;base64,${lqipBuf.toString("base64")}`;
   return { storageKey, width, height, lqip, variants };

@@ -9,14 +9,14 @@ import {
   Settings,
   Users,
   Wrench,
-  FolderOpen,
   Images,
+  FolderOpen,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavCategory = { id: string; name: string; type: string };
-type NavProject = { id: string; title: string };
+type NavProject = { id: string; title: string; categoryId: string | null };
 
 function itemClass(active: boolean) {
   return cn(
@@ -27,51 +27,44 @@ function itemClass(active: boolean) {
   );
 }
 
-/** Section dépliable : un lien-titre + un chevron qui révèle des sous-liens. */
-function Collapsible({
+/** Lien + chevron de dépliage (le clic sur le libellé navigue, le chevron déplie). */
+function Row({
   href,
   label,
   icon: Icon,
   active,
+  expandable,
   open,
   onToggle,
-  children,
-  hasChildren,
+  small,
 }: {
   href: string;
   label: string;
   icon: typeof Layers;
   active: boolean;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-  hasChildren: boolean;
+  expandable: boolean;
+  open?: boolean;
+  onToggle?: () => void;
+  small?: boolean;
 }) {
   return (
-    <div>
-      <div className={cn("flex items-center", itemClass(active), "pr-0")}>
-        <Link href={href} className="flex flex-1 items-center gap-2">
-          <Icon className={cn("size-4", active && "text-primary")} />
-          {label}
-        </Link>
-        {hasChildren && (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label={open ? "Replier" : "Déplier"}
-            aria-expanded={open}
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ChevronRight
-              className={cn("size-4 transition-transform", open && "rotate-90")}
-            />
-          </button>
-        )}
-      </div>
-      {open && hasChildren && (
-        <div className="mt-0.5 grid gap-0.5 border-l border-border pl-3 ml-3">
-          {children}
-        </div>
+    <div className={cn("flex items-center", itemClass(active), small && "py-1.5 text-sm")}>
+      <Link href={href} className="flex min-w-0 flex-1 items-center gap-2">
+        <Icon className={cn("size-4 shrink-0", active && "text-primary")} />
+        <span className="truncate">{label}</span>
+      </Link>
+      {expandable && (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={open ? "Replier" : "Déplier"}
+          aria-expanded={open}
+          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <ChevronRight
+            className={cn("size-4 transition-transform", open && "rotate-90")}
+          />
+        </button>
       )}
     </div>
   );
@@ -89,30 +82,34 @@ export function AdminNav({
   projects?: NavProject[];
 }) {
   const pathname = usePathname();
-  const ongletsActive = pathname.startsWith("/admin/categories");
-  const projetsActive = pathname.startsWith("/admin/projects");
-  // Sections ouvertes par défaut si on est dans une de leurs pages.
-  const [openOnglets, setOpenOnglets] = useState(ongletsActive);
-  const [openProjets, setOpenProjets] = useState(projetsActive);
+  const ongletsActive =
+    pathname.startsWith("/admin/categories") ||
+    pathname.startsWith("/admin/projects");
 
-  const subLink = (href: string, label: string) => {
-    const active = pathname === href;
-    return (
-      <Link
-        key={href}
-        href={href}
-        className={cn(
-          "truncate rounded-md px-2 py-1.5 text-sm transition-colors",
-          active
-            ? "bg-primary/10 font-medium text-primary"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-        )}
-        title={label}
-      >
-        {label}
-      </Link>
-    );
-  };
+  // Projet en cours d'édition (pour auto-déplier son onglet).
+  const curProjectId =
+    pathname.match(/^\/admin\/projects\/([^/]+)/)?.[1] ?? null;
+  const projectsByCat = new Map<string, NavProject[]>();
+  for (const p of projects) {
+    if (!p.categoryId) continue;
+    const arr = projectsByCat.get(p.categoryId) ?? [];
+    arr.push(p);
+    projectsByCat.set(p.categoryId, arr);
+  }
+
+  const [openOnglets, setOpenOnglets] = useState(ongletsActive);
+  // Onglets « projets » dépliés : ouvre celui qui contient le projet édité.
+  const [openCats, setOpenCats] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    if (curProjectId) {
+      for (const [catId, list] of projectsByCat) {
+        if (list.some((p) => p.id === curProjectId)) init[catId] = true;
+      }
+    }
+    return init;
+  });
+  const toggleCat = (id: string) =>
+    setOpenCats((s) => ({ ...s, [id]: !s[id] }));
 
   return (
     <nav className="flex flex-col gap-1">
@@ -123,44 +120,69 @@ export function AdminNav({
         Dashboard
       </Link>
 
-      <Collapsible
+      {/* Onglets : contient TOUT (galeries + onglets projets, ces derniers dépliables). */}
+      <Row
         href="/admin/categories"
         label="Onglets"
         icon={Layers}
         active={ongletsActive}
+        expandable={categories.length > 0}
         open={openOnglets}
         onToggle={() => setOpenOnglets((v) => !v)}
-        hasChildren={categories.length > 0}
-      >
-        {categories.map((c) => (
-          <div key={c.id} className="flex items-center gap-1.5">
-            {c.type === "photos" ? (
-              <Images className="size-3.5 shrink-0 text-muted-foreground" />
-            ) : (
-              <Layers className="size-3.5 shrink-0 text-muted-foreground" />
-            )}
-            <div className="min-w-0 flex-1">
-              {subLink(`/admin/categories/${c.id}`, c.name)}
-            </div>
-          </div>
-        ))}
-      </Collapsible>
-
-      <Collapsible
-        href="/admin/projects"
-        label="Projets"
-        icon={FolderOpen}
-        active={projetsActive}
-        open={openProjets}
-        onToggle={() => setOpenProjets((v) => !v)}
-        hasChildren={projects.length > 0}
-      >
-        {projects.map((p) => (
-          <div key={p.id} className="min-w-0">
-            {subLink(`/admin/projects/${p.id}`, p.title)}
-          </div>
-        ))}
-      </Collapsible>
+      />
+      {openOnglets && categories.length > 0 && (
+        <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
+          {categories.map((c) => {
+            const catActive = pathname === `/admin/categories/${c.id}`;
+            if (c.type !== "projects") {
+              // Galerie photos → simple lien.
+              return (
+                <Row
+                  key={c.id}
+                  href={`/admin/categories/${c.id}`}
+                  label={c.name}
+                  icon={Images}
+                  active={catActive}
+                  expandable={false}
+                  small
+                />
+              );
+            }
+            // Onglet « projets » → dépliable pour montrer ses projets.
+            const list = projectsByCat.get(c.id) ?? [];
+            const open = openCats[c.id] ?? false;
+            return (
+              <div key={c.id}>
+                <Row
+                  href={`/admin/categories/${c.id}`}
+                  label={c.name}
+                  icon={Layers}
+                  active={catActive}
+                  expandable={list.length > 0}
+                  open={open}
+                  onToggle={() => toggleCat(c.id)}
+                  small
+                />
+                {open && list.length > 0 && (
+                  <div className="ml-3 grid gap-0.5 border-l border-border pl-3">
+                    {list.map((p) => (
+                      <Row
+                        key={p.id}
+                        href={`/admin/projects/${p.id}`}
+                        label={p.title}
+                        icon={FolderOpen}
+                        active={pathname === `/admin/projects/${p.id}`}
+                        expandable={false}
+                        small
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <Link
         href="/admin/settings"

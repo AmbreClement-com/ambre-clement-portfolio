@@ -21,7 +21,7 @@ export default async function AdminLayout({
       .catch(() => []),
     db.query.projects
       .findMany({
-        columns: { id: true, title: true },
+        columns: { id: true, title: true, categoryId: true },
         orderBy: (p, { asc }) => [asc(p.displayOrder)],
       })
       .catch(() => []),
@@ -55,7 +55,11 @@ export default async function AdminLayout({
             name: c.name,
             type: c.type,
           }))}
-          projects={projs}
+          projects={projs.map((p) => ({
+            id: p.id,
+            title: p.title,
+            categoryId: p.categoryId,
+          }))}
         />
       </aside>
       <main className="flex-1 p-6 pb-28 md:p-8 md:pb-28">

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import { createPricing, updatePricing } from "@/server/actions/pricing";
-import { NEW_PRICING_DEFAULTS } from "@/lib/pricing";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -21,17 +20,13 @@ export function PricingForm({ pricing }: { pricing?: Pricing | null }) {
   const [imgBusy, setImgBusy] = useState(false);
 
   const [published, setPublished] = useState(pricing?.published ?? false);
-  const [title, setTitle] = useState(pricing?.title ?? NEW_PRICING_DEFAULTS.title);
-  const [subtitle, setSubtitle] = useState(
-    pricing?.subtitle ?? NEW_PRICING_DEFAULTS.subtitle,
-  );
-  const [intro, setIntro] = useState(pricing?.intro ?? NEW_PRICING_DEFAULTS.intro);
+  const [title, setTitle] = useState(pricing?.title ?? "");
+  const [subtitle, setSubtitle] = useState(pricing?.subtitle ?? "");
+  const [intro, setIntro] = useState(pricing?.intro ?? "");
   const [includes, setIncludes] = useState<string[]>(
-    pricing?.includes?.length
-      ? pricing.includes
-      : [...NEW_PRICING_DEFAULTS.includes],
+    pricing?.includes?.length ? pricing.includes : [""],
   );
-  const [price, setPrice] = useState(pricing?.price ?? NEW_PRICING_DEFAULTS.price);
+  const [price, setPrice] = useState(pricing?.price ?? "");
   const [image, setImage] = useState<StoredImage | null>(pricing?.image ?? null);
 
   async function onPickImage(file: File) {

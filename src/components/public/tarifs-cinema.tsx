@@ -12,8 +12,6 @@ import { ResponsiveImage } from "@/components/public/responsive-image";
 import { FrameMeta } from "@/components/public/frame-context";
 import type { Pricing } from "@/server/db/schema";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 const RM_QUERY = "(prefers-reduced-motion: reduce)";
 function usePrefersReducedMotion() {
   return useSyncExternalStore(
@@ -202,7 +200,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   if (reduced) {
     return (
       <main className="min-h-[100svh] w-full bg-white px-6 pb-24 pt-24 md:px-12">
-        <FrameMeta title="Tarifs" count={n} />
+        <FrameMeta title="Tarifs" />
         <div className="mx-auto grid max-w-5xl gap-20">
           {pricings.map((p, i) => (
             <TarifBlock key={p.id} p={p} priority={i === 0} />
@@ -215,7 +213,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   return (
     // Hauteur = n écrans → marge de défilement ; la scène est "sticky".
     <div ref={wrapRef} style={{ height: `${n * 100}vh` }} className="relative bg-white">
-      <FrameMeta title="Tarifs" count={n} current={active + 1} />
+      <FrameMeta title="Tarifs" />
       <div className="sticky top-0 h-screen overflow-hidden bg-white text-neutral-900">
         {/* Couches (fondu + dolly) — chaque couche = un tarif complet */}
         <div className="absolute inset-0">
@@ -265,12 +263,6 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           </div>
         </div>
 
-        {/* Grand numéro (droite) */}
-        <div className="pointer-events-none absolute right-5 top-1/2 hidden -translate-y-1/2 md:block md:right-8">
-          <div className="font-mono text-6xl font-light leading-none tabular-nums text-neutral-900">
-            {pad(active + 1)}
-          </div>
-        </div>
       </div>
     </div>
   );

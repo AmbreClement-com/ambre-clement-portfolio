@@ -31,8 +31,8 @@ export default async function AdminSettingsPage() {
           .catch(() => null)
       : Promise.resolve(null),
   ]);
-  const themeRaw = settings?.theme;
-  const theme = isThemeKey(themeRaw) ? themeRaw : "default";
+  // Thème PROPRE À L'UTILISATEUR connecté (plus un réglage global).
+  const theme = isThemeKey(me?.theme) ? me.theme : "default";
   const isAdmin = session?.user?.role === "admin";
   const isDev = process.env.NODE_ENV !== "production";
 

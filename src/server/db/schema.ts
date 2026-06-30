@@ -205,6 +205,8 @@ export const users = pgTable("users", {
   name: text("name"),
   // "admin" (accès total) ou "editor" (contenu uniquement).
   role: text("role").notNull().default("admin"),
+  // Thème du back-office, PROPRE À CHAQUE UTILISATEUR (NULL → thème par défaut).
+  theme: text("theme"),
   // Jeton d'invitation à usage unique → page de définition du mot de passe.
   inviteToken: text("invite_token").unique(),
   invitedAt: timestamp("invited_at"),

@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { WelcomeOverlay } from "@/components/admin/welcome-overlay";
 import { auth } from "@/server/auth";
-import { getSettings } from "@/server/db/queries/projects";
 import { db } from "@/server/db";
+import { users } from "@/server/db/schema";
 import { isThemeKey } from "@/lib/themes";
 
 export default async function AdminLayout({
@@ -13,9 +14,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [session, settings, cats, projs, tarifs] = await Promise.all([
+  const [session, cats, projs, tarifs] = await Promise.all([
     auth(),
-    getSettings().catch(() => null),
     db.query.categories
       .findMany({ orderBy: (c, { asc }) => [asc(c.displayOrder)] })
       .catch(() => []),
@@ -39,8 +39,17 @@ export default async function AdminLayout({
     redirect("/admin/login");
   }
 
+  // Thème PROPRE À L'UTILISATEUR connecté (lu frais à chaque rendu admin).
+  const me = session.user.email
+    ? await db.query.users
+        .findFirst({
+          where: eq(users.email, session.user.email),
+          columns: { theme: true },
+        })
+        .catch(() => null)
+    : null;
   const firstName = session.user.firstName ?? null;
-  const theme = isThemeKey(settings?.theme) ? settings.theme : "default";
+  const theme = isThemeKey(me?.theme) ? me.theme : "default";
 
   return (
     <div

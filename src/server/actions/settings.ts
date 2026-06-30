@@ -1,21 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { siteSettings } from "@/server/db/schema";
+import { siteSettings, users } from "@/server/db/schema";
 import { settingsInput } from "@/lib/validators";
 import { isThemeKey } from "@/lib/themes";
 import { DEFAULT_ANIMATIONS } from "@/lib/animations";
 import { requireAdmin } from "./guard";
 
+/** Thème du back-office — réglage PROPRE À L'UTILISATEUR connecté (pas global). */
 export async function updateTheme(theme: string) {
-  await requireAdmin();
+  const me = await requireAdmin();
   if (!isThemeKey(theme)) throw new Error("Thème invalide");
-  await db
-    .insert(siteSettings)
-    .values({ id: 1, theme, defaultSeo: {} })
-    .onConflictDoUpdate({ target: siteSettings.id, set: { theme } });
-  revalidatePath("/", "layout");
+  if (!me.email) throw new Error("Votre session a expiré. Reconnectez-vous.");
+  await db.update(users).set({ theme }).where(eq(users.email, me.email));
+  revalidatePath("/admin", "layout");
 }
 
 export async function updateSettings(raw: unknown) {

@@ -48,7 +48,20 @@ const nextConfig: NextConfig = {
   // Transitions de vue React (morph couverture → page projet à l'ouverture)
   experimental: { viewTransition: true },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      {
+        // Service worker : bon type MIME + jamais mis en cache (les MàJ se propagent).
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
   },
 };
 

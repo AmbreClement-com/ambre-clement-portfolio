@@ -16,13 +16,13 @@ export default async function LegalPage() {
   const settings = await getSettings().catch(() => null);
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-6 pb-32 pt-36 md:pt-44">
+    <main className="mx-auto min-h-screen max-w-3xl px-11 pb-24 pt-28 md:px-6 md:pb-32 md:pt-44">
       <FrameMeta title="Mentions légales" />
       <Reveal>
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-neutral-400">
           Informations légales
         </p>
-        <h1 className="mt-6 text-4xl font-extralight uppercase tracking-[0.02em] md:text-6xl">
+        <h1 className="mt-6 text-3xl font-extralight uppercase tracking-[0.02em] sm:text-4xl md:text-6xl">
           Mentions légales
         </h1>
       </Reveal>

@@ -45,22 +45,19 @@ export default async function ContactPage() {
 
       {/* Texte : titre + paragraphe + email — padding gauche élargi pour dégager
           les icônes sociales du cadre (bord gauche, centre vertical). */}
-      <div className="absolute inset-x-0 bottom-0 pb-28 pl-16 pr-6 md:pb-32 md:pl-24 md:pr-12 lg:max-w-4xl">
-        <p
-          className="c-rise font-mono text-xs uppercase tracking-[0.3em] text-white/70"
-          style={{ animationDelay: "0.1s" }}
-        >
-          [ Contact ]
-        </p>
+      {/* Mobile : le contenu tient DANS le cadre (entre les repères haut/bas) et défile
+          si le texte est long — ancré en bas pour les textes courts. Desktop : ancré en
+          bas comme à l'origine. */}
+      <div className="absolute inset-x-0 top-28 bottom-16 flex flex-col justify-end overflow-y-auto pl-11 pr-6 md:inset-y-auto md:bottom-0 md:block md:overflow-visible md:pb-32 md:pl-24 md:pr-12 lg:max-w-4xl">
         <h1
-          className="c-rise mt-5 max-w-3xl text-4xl font-light leading-[1.05] text-white md:text-6xl"
-          style={{ animationDelay: "0.22s" }}
+          className="c-rise max-w-3xl text-2xl font-light leading-[1.05] text-white sm:text-4xl md:text-6xl"
+          style={{ animationDelay: "0.12s" }}
         >
           {title}
         </h1>
         {text && (
           <p
-            className="c-rise mt-6 max-w-xl whitespace-pre-line text-base font-light leading-relaxed text-white/80 md:text-lg"
+            className="c-rise mt-6 max-w-xl whitespace-pre-line text-sm font-light leading-relaxed text-white/80 sm:text-base md:text-lg"
             style={{ animationDelay: "0.36s" }}
           >
             {text}
@@ -69,9 +66,9 @@ export default async function ContactPage() {
         <a
           href={`mailto:${email}`}
           style={{ animationDelay: "0.5s" }}
-          className="c-rise group mt-8 inline-flex items-baseline gap-3 text-lg font-light text-white md:text-2xl"
+          className="c-rise group mt-8 inline-flex max-w-full flex-wrap items-baseline gap-3 text-base font-light text-white sm:text-lg md:text-2xl"
         >
-          <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:100%_1px] bg-left-bottom bg-no-repeat pb-1 transition-[background-size] duration-500 ease-out group-hover:bg-[length:0%_1px]">
+          <span className="break-all bg-[linear-gradient(currentColor,currentColor)] bg-[length:100%_1px] bg-left-bottom bg-no-repeat pb-1 transition-[background-size] duration-500 ease-out group-hover:bg-[length:0%_1px]">
             {email}
           </span>
           <span className="transition-transform duration-500 group-hover:translate-x-1">

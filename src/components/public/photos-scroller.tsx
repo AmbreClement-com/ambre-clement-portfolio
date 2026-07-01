@@ -143,16 +143,22 @@ export function PhotosScroller({
   const hoverRef = useRef<number | null>(null); // index du plan survolé
   const mouseRef = useRef({ x: 0, y: 0 }); // souris dans la photo survolée (-1..1)
 
-  // Colonnes : 4 en desktop / 2 en mobile, MAIS plafonné au nombre de photos →
-  // petite galerie centrée et « intelligente » (1 → 1 seule au milieu, 2 → 2 sur une
-  // ligne, 3 → 3, 4 → 4 ; 5-8 → 2 lignes ; au-delà : grille pleine largeur classique).
-  // `justify-items-center` (cf. la grille) centre chaque photo dans sa cellule.
+  // Colonnes : 4 desktop (≥1024) · 3 tablette (768-1023, cellules plus larges → photos
+  // plus grandes) · 2 portrait large (480-767) · 1 téléphone (<480, photos en grand),
+  // MAIS plafonné au nombre de photos → petite galerie centrée et « intelligente ».
+  // `justify-items-center` (cf. la grille) centre chaque photo.
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const apply = () => setMaxCols(mq.matches ? 4 : 2);
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const tablet = window.matchMedia("(min-width: 768px)");
+    const phone = window.matchMedia("(max-width: 479px)");
+    const apply = () =>
+      setMaxCols(
+        wide.matches ? 4 : tablet.matches ? 3 : phone.matches ? 1 : 2,
+      );
     apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    const mqs = [wide, tablet, phone];
+    mqs.forEach((mq) => mq.addEventListener("change", apply));
+    return () => mqs.forEach((mq) => mq.removeEventListener("change", apply));
   }, []);
 
   // La galerie démarre TOUJOURS en haut : on neutralise tout scroll résiduel de la
@@ -415,10 +421,7 @@ export function PhotosScroller({
           )}
         >
           <div
-            className={cn(
-              "grid w-full justify-items-center gap-x-6 gap-y-16 lg:gap-x-10 lg:gap-y-28",
-              !smallGallery && "pb-16",
-            )}
+            className="grid w-full justify-items-center gap-x-6 gap-y-8 min-[480px]:gap-y-16 lg:gap-x-10 lg:gap-y-28"
             style={{ gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` }}
           >
             {looped.map((photo, i) => {
@@ -443,7 +446,12 @@ export function PhotosScroller({
                   };
                 }}
                 aria-label={`Agrandir : ${photo.altText}`}
-                className="block h-[155px] max-w-full cursor-pointer overflow-hidden [&>picture]:block [&>picture]:h-full sm:h-[200px] lg:h-[255px]"
+                className={cn(
+                  // Mobile ET tablette : largeur de colonne pleine + hauteur AUTO → le FORMAT
+                  // des photos est préservé (aucun recadrage). Desktop (lg, ≥1024) : grille à
+                  // hauteur fixe 255px. Identique pour toutes les galeries (photo ET projet).
+                  "block w-full max-w-full cursor-pointer overflow-hidden [&>picture]:block lg:h-[255px] lg:w-auto lg:[&>picture]:h-full",
+                )}
               >
                 <ResponsiveImage
                   variants={photo.variants}
@@ -452,8 +460,8 @@ export function PhotosScroller({
                   height={photo.height}
                   lqip={photo.lqip}
                   priority={i < perRow}
-                  sizes="(max-width: 768px) 45vw, 22vw"
-                  className="h-full w-auto"
+                  sizes="(max-width: 479px) 100vw, (max-width: 767px) 45vw, (max-width: 1023px) 32vw, 22vw"
+                  className="h-auto w-full lg:h-full lg:w-auto"
                 />
               </button>
             );

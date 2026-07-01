@@ -42,7 +42,9 @@ export function KpiCard({
             <Icon className="size-4 text-primary" />
           </span>
         </div>
-        <div className="text-3xl font-semibold tabular-nums">{value}</div>
+        <div className="text-2xl font-semibold tabular-nums sm:text-3xl">
+          {value}
+        </div>
         <div className="flex items-center gap-1.5 text-xs">
           {deltaPct === null ? (
             <span className="text-muted-foreground">{hint ?? "Nouvelle période"}</span>

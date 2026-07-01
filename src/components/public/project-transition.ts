@@ -195,6 +195,13 @@ export function openProject(
   slug: string,
   navigate: () => void,
   speed = 1,
+  hudInfo?: {
+    title: string;
+    location: string | null;
+    year: string | null;
+    index: number;
+    total: number;
+  } | null,
 ) {
   if (reduced()) {
     navigate();
@@ -210,7 +217,14 @@ export function openProject(
   // (on ne voit qu'elle dans le petit cadre, jamais la page).
   buildOverlay(start, src, img.alt, false);
   // DÉZOOM identique au changement de page (cadre + coins + Matrix). Navbar intacte.
-  window.dispatchEvent(new Event("ac:page-exit"));
+  // On passe les infos du projet destination → le HUD PERSISTE pendant l'ouverture
+  // (calque z-90 du cadre), comme lors d'un changement projet → projet. Pas de `href`
+  // dans le detail : la navbar (qui lit `href`) n'est donc pas affectée.
+  window.dispatchEvent(
+    new CustomEvent("ac:page-exit", {
+      detail: { projectInfo: hudInfo ?? null },
+    }),
+  );
 
   // CIBLE = le petit cadre central ENTIER (et non la position dézoomée de la photo) :
   // la couverture le remplit, masquant la page dézoomée derrière.
@@ -300,6 +314,11 @@ export function closeProject(slug: string, navigate: () => void, speed = 1) {
     undefined,
     0.92,
   );
+}
+
+/** Marque le projet d'où l'on revient → le cinéma se recentrera dessus au montage. */
+export function markReturn(slug: string) {
+  returnSlug = slug;
 }
 
 /** Slug à recentrer au retour (consommé par le cinéma au montage). */
@@ -395,6 +414,77 @@ export function finishReveal() {
       destroyOverlay();
       return;
     }
+    // MOBILE + TABLETTE (< 1024px) : la révélation "clip-opening + dézoom" ci-dessous est
+    // calibrée desktop et suppose des photos à HAUTEUR FIXE. Or sous 1024px les photos sont
+    // en hauteur AUTO → au montage leur taille n'est pas fiable → la reveal desktop casse
+    // (atterrissage de travers). Version SIMPLE et robuste, isolée du desktop : la galerie
+    // s'affiche pleine, le clone (couverture) attend que la 1re photo soit dimensionnée puis
+    // glisse se caler PILE dessus et se fond. Le vol d'ouverture (aller) est conservé.
+    if (window.innerWidth < 1024) {
+      window.dispatchEvent(new Event("ac:project-reveal")); // efface le cadre + décode texte
+      resetGallery(); // pageZoom = 1, <main> sans transform
+      // On CACHE la galerie (clip nul) tant que le clone n'est pas calé sur la 1re photo :
+      // sinon on voit EN MÊME TEMPS la vraie 1re photo ET le clone (couverture) = doublon.
+      const mainEl2 = document.querySelector<HTMLElement>("main");
+      canvas.style.clipPath = "inset(50%)";
+      if (mainEl2) mainEl2.style.clipPath = "inset(50%)";
+      const finish = () => {
+        removeClone();
+        revealActive = false;
+        projectReveal.active = false; // la galerie reprend son clip normal
+      };
+      const reveal = () => {
+        canvas.style.clipPath = "";
+        if (mainEl2) mainEl2.style.clipPath = "";
+        if (imgEl)
+          gsap.to(imgEl, {
+            opacity: 0,
+            duration: 0.4,
+            ease: "power2.inOut",
+            onComplete: finish,
+          });
+        else finish();
+      };
+      // La 1re photo est en HAUTEUR AUTO sur mobile : au montage sa taille/position n'est
+      // pas fiable (petite, centrée) puis elle grandit. On ATTEND qu'elle soit vraiment
+      // dimensionnée (≥ 30% de l'écran) avant de mesurer et glisser — sinon le clone se
+      // cale sur une fausse position minuscule (bug observé).
+      let tries = 0;
+      const glideWhenReady = () => {
+        if (!overlay) return finish();
+        const r0 = rectOf(plane);
+        if (r0.height < window.innerHeight * 0.3 && tries < 30) {
+          tries++;
+          requestAnimationFrame(glideWhenReady);
+          return;
+        }
+        gsap.to(overlay, {
+          x: r0.left,
+          y: r0.top,
+          width: r0.width,
+          height: r0.height,
+          duration: 0.5,
+          ease: "power3.inOut",
+          onComplete: () => {
+            // Re-mesure PILE avant de révéler : le clone se cale exactement sur la 1re photo
+            // même si la mise en page a encore bougé → aucun décalage clone→galerie.
+            if (overlay) {
+              const r1 = rectOf(plane);
+              gsap.set(overlay, {
+                x: r1.left,
+                y: r1.top,
+                width: r1.width,
+                height: r1.height,
+              });
+            }
+            reveal();
+          },
+        });
+      };
+      requestAnimationFrame(glideWhenReady);
+      return;
+    }
+
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const r = rectOf(plane); // case (slot) de la 1re photo, taille normale

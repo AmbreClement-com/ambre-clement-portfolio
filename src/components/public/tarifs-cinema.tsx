@@ -32,11 +32,12 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
     .map((s) => s.trim())
     .filter(Boolean);
   return (
-    <div className="grid w-full items-center gap-8 md:grid-cols-2 md:gap-12">
-      {/* PHOTO (gauche) — boîte FIXE (même format/position pour tous les tarifs) */}
+    <div className="grid w-full items-center gap-6 md:grid-cols-2 md:gap-12">
+      {/* PHOTO (gauche) — boîte FIXE. Sur mobile : petit accent (le texte prime) ;
+          sur desktop : pleine (max-w-sm). */}
       <div>
         {p.image ? (
-          <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)]">
+          <div className="relative mx-auto aspect-[3/4] w-full max-w-[180px] overflow-hidden shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)] sm:max-w-sm">
             <ResponsiveImage
               variants={p.image.variants}
               alt={p.title}
@@ -49,7 +50,7 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
             />
           </div>
         ) : (
-          <div className="mx-auto flex aspect-[3/4] w-full max-w-sm items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-400">
+          <div className="mx-auto flex aspect-[3/4] w-full max-w-[180px] items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-400 sm:max-w-sm">
             Aucune image
           </div>
         )}
@@ -114,7 +115,8 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   useEffect(() => {
     if (reduced || n === 0) return;
     const STEP = 66; // hauteur vignette + écart
-    const lenis = new Lenis({ lerp: 0.08 });
+    // lerp élevé (avant 0.08) = inertie courte → pas de "glisse" entre deux tarifs.
+    const lenis = new Lenis({ lerp: 0.2 });
     lenisRef.current = lenis;
     let raf = 0;
     let last = -1;
@@ -170,11 +172,14 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
       const target = Math.round(af);
       if (Math.abs(af - target) < 0.012) return;
       const desired = (target / (n - 1)) * total;
-      lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 0.6 });
+      // Recalage quasi instantané (avant : 0.6s → impression de flottement).
+      lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 0.14 });
     };
     const onScroll = () => {
       clearTimeout(idle);
-      idle = setTimeout(snap, 140);
+      // Dès que le scroll ralentit, on recale IMMÉDIATEMENT au lieu d'attendre la fin de
+      // l'inertie → plus de temps mort "coincé" entre deux tarifs.
+      idle = setTimeout(snap, Math.abs(lenis.velocity) < 5 ? 0 : 40);
     };
     lenis.on("scroll", onScroll);
 
@@ -199,7 +204,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   // ---- Repli accessible (reduced-motion) : tarifs empilés ----
   if (reduced) {
     return (
-      <main className="min-h-[100svh] w-full bg-white px-6 pb-24 pt-24 md:px-12">
+      <main className="min-h-[100svh] w-full bg-white px-11 pb-24 pt-32 md:px-12 md:pt-24">
         <FrameMeta title="Tarifs" />
         <div className="mx-auto grid max-w-5xl gap-20">
           {pricings.map((p, i) => (
@@ -223,7 +228,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
               ref={(el) => {
                 layerRefs.current[i] = el;
               }}
-              className="absolute inset-0 flex items-center justify-center px-6 will-change-[opacity,transform] md:px-24"
+              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-24 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-24 md:py-0"
               style={{ opacity: i === 0 ? 1 : 0 }}
             >
               <div className="w-full max-w-4xl">
@@ -263,6 +268,35 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           </div>
         </div>
 
+        {/* Bande de vignettes horizontale (mobile) — navigation entre tarifs, dans le cadre. */}
+        <div className="absolute inset-x-0 bottom-12 flex justify-center px-4 md:hidden">
+          <div className="flex max-w-[92vw] gap-1.5 overflow-x-auto pb-1">
+            {pricings.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => goTo(i)}
+                aria-label={`Aller au tarif ${p.title}`}
+                className={`h-9 w-12 shrink-0 overflow-hidden border bg-neutral-100 transition-all duration-300 ${
+                  i === active
+                    ? "border-neutral-900 opacity-100"
+                    : "border-neutral-300 opacity-45"
+                }`}
+              >
+                {p.image && (
+                  <ResponsiveImage
+                    variants={p.image.variants}
+                    alt={p.title}
+                    width={p.image.width}
+                    height={p.image.height}
+                    sizes="48px"
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

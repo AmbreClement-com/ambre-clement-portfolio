@@ -12,16 +12,28 @@ import Link from "next/link";
  * Transitions désactivées dans les réglages → l'intercepteur se retire, navigation
  * normale.
  */
-export function ProjectBackButton({ cinemaUrl }: { cinemaUrl: string }) {
+export function ProjectBackButton({
+  cinemaUrl,
+  slug,
+}: {
+  cinemaUrl: string;
+  slug: string;
+}) {
   return (
     <Link
       href={cinemaUrl}
       aria-label="Retour aux projets"
+      // Retour = fermeture de projet : `data-project-close` dit à la navbar de PERSISTER le
+      // HUD du projet + lancer le décodage Matrix dès le début (miroir de l'ouverture), et
+      // `data-return-slug` lui dit sur quel projet recentrer le cinéma à l'atterrissage.
+      // (On ne peut pas utiliser onClick : l'intercepteur navbar stoppe la propagation.)
+      data-project-close
+      data-return-slug={slug}
       // MARGES de « Mentions légales » (left-4 / md:left-7), mais COULEUR + TAILLE des
       // autres infos du cadre : blanc plein (mix-blend-difference), text-[11px]/md:text-xs,
       // tracking 0.14em, pleine opacité (voyant) → hover 60 % comme les liens du cadre.
       // Vertical, lu de bas en haut, flèche ↑ centrée au-dessus.
-      className="pointer-events-auto fixed left-4 top-28 z-40 flex flex-col items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-white mix-blend-difference transition-opacity hover:opacity-60 md:left-7 md:text-xs"
+      className="pointer-events-auto fixed left-4 top-40 z-40 flex flex-col items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-white mix-blend-difference transition-opacity hover:opacity-60 md:left-7 md:top-28 md:text-xs"
     >
       <span aria-hidden className="text-sm leading-none">
         ↑

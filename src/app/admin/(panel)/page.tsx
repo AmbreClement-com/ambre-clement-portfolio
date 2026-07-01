@@ -317,7 +317,9 @@ export default async function AdminDashboard({
               </span>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-semibold tabular-nums">{s.value}</p>
+              <p className="text-2xl font-semibold tabular-nums sm:text-3xl">
+                {s.value}
+              </p>
             </CardContent>
           </Card>
         ))}

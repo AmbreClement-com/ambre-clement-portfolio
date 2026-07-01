@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { SITE_URL, SITE_NAME, SITE_DEFAULT_DESCRIPTION } from "@/lib/seo";
@@ -20,6 +20,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
   description: SITE_DEFAULT_DESCRIPTION,
+};
+
+// Indispensable au responsive mobile : sans `width=device-width`, les navigateurs
+// mobiles rendent la page en largeur desktop puis la dézooment. `viewport-fit: cover`
+// laisse le cadre plein écran gérer les encoches (safe-area).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

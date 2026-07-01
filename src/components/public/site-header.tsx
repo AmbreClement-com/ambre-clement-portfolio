@@ -6,9 +6,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { cn } from "@/lib/utils";
 import { MIN_ZOOM } from "@/lib/page-zoom";
-import { useFrameMeta } from "@/components/public/frame-context";
+import { markReturn } from "@/components/public/project-transition";
 
-type NavCategory = { name: string; slug: string };
+type NavCategory = { name: string; slug: string; type?: string };
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const RADIUS = 28; // = rounded-[1.75rem]
@@ -90,8 +90,9 @@ export function SiteHeader({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const ctx = useFrameMeta();
-  const dark = ctx?.meta?.tone === "dark";
+  // Verre TOUJOURS clair (blanc) → identique à la barre admin, sur toutes les pages quel
+  // que soit leur ton. Contenu foncé, bien lisible sur le blanc.
+  const dark = false;
 
   // Ferme le menu au changement de page (motif render-time, pas d'effet).
   const [navPath, setNavPath] = useState(pathname);
@@ -104,9 +105,10 @@ export function SiteHeader({
     ...categories.map((c, i) => ({
       href: i === 0 ? "/" : `/${c.slug}`,
       label: c.name,
+      cinema: c.type === "projects", // cible = cinéma projets → HUD persistant (Matrix)
     })),
-    ...(pricingNav ? [pricingNav] : []), // « Tarifs » seulement si publiée
-    { href: "/contact", label: "Contact" },
+    ...(pricingNav ? [{ ...pricingNav, cinema: false }] : []), // « Tarifs » si publiée
+    { href: "/contact", label: "Contact", cinema: false },
   ];
 
   const isActive = (href: string) =>
@@ -257,7 +259,7 @@ export function SiteHeader({
 
   // SORTIE : centrage du logo, puis la pilule se déplie (LARGEUR puis HAUTEUR).
   const run = useCallback(
-    (href: string, label?: string) => {
+    (href: string, label?: string, projectClose = false, cinemaNav = false) => {
       if (animating.current) return;
       const reduce = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
@@ -328,7 +330,9 @@ export function SiteHeader({
       tl.call(
         () =>
           window.dispatchEvent(
-            new CustomEvent("ac:page-exit", { detail: { href } }),
+            new CustomEvent("ac:page-exit", {
+              detail: { href, projectClose, cinemaNav },
+            }),
           ),
         undefined,
         0.4,
@@ -514,7 +518,17 @@ export function SiteHeader({
       if (!force && /^\/projects\/[^/]+$/.test(p)) return;
       e.preventDefault();
       e.stopPropagation();
-      run(url.pathname + url.search + url.hash, a.dataset.pageLabel);
+      const projectClose = a.dataset.projectClose !== undefined;
+      const cinemaNav = a.dataset.cinemaNav !== undefined; // destination = cinéma projets
+      // Retour projet → cinéma : on pose le slug de recentrage AVANT la navigation (le
+      // onClick du lien ne s'exécute pas, la propagation étant stoppée ci-dessus).
+      if (projectClose && a.dataset.returnSlug) markReturn(a.dataset.returnSlug);
+      run(
+        url.pathname + url.search + url.hash,
+        a.dataset.pageLabel,
+        projectClose,
+        cinemaNav,
+      );
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
@@ -523,7 +537,7 @@ export function SiteHeader({
   // Jeux de classes selon la teinte.
   const halo = dark
     ? "[text-shadow:0_1px_2px_rgba(0,0,0,0.55),0_2px_12px_rgba(0,0,0,0.4)]"
-    : "[text-shadow:0_1px_2px_rgba(255,255,255,0.8),0_2px_10px_rgba(255,255,255,0.55)]";
+    : "[text-shadow:0_0_3px_rgba(255,255,255,1),0_0_7px_rgba(255,255,255,0.95),0_1px_2px_rgba(255,255,255,0.9)]";
   const dotColor = dark ? "bg-white" : "bg-neutral-900";
   const itemActive = dark ? "text-white" : "text-neutral-900";
   const itemIdle = dark
@@ -543,14 +557,14 @@ export function SiteHeader({
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         className={cn(
-          "pointer-events-auto relative flex w-[21rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[1.75rem] backdrop-blur-2xl backdrop-saturate-[1.8] transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)]",
+          "glass-refract pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[1.75rem] transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
           dark
             ? open
-              ? "bg-black/45 shadow-[0_18px_50px_-10px_rgba(0,0,0,0.55)] ring-1 ring-white/20 backdrop-blur-3xl"
-              : "bg-black/30 shadow-[0_10px_35px_-8px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
+              ? "bg-black/60 shadow-[0_18px_50px_-10px_rgba(0,0,0,0.55)] ring-1 ring-white/25"
+              : "bg-black/45 shadow-[0_10px_35px_-8px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
             : open
-              ? "bg-white/75 shadow-[0_18px_50px_-10px_rgba(0,0,0,0.35)] ring-1 ring-white/70 backdrop-blur-3xl"
-              : "bg-white/50 shadow-[0_10px_35px_-8px_rgba(0,0,0,0.28)] ring-1 ring-white/55",
+              ? "bg-white/90 shadow-[0_18px_50px_-10px_rgba(0,0,0,0.35)] ring-1 ring-white/70"
+              : "bg-white/18 shadow-[0_10px_35px_-8px_rgba(0,0,0,0.3)] ring-1 ring-white/40",
         )}
       >
         {/* cache opaque (sous le titre) : monte en opacité au palier pour masquer
@@ -603,7 +617,7 @@ export function SiteHeader({
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}
             className={cn(
-              "grid shrink-0 grid-cols-2 p-1.5 transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)]",
+              "grid shrink-0 grid-cols-2 p-1.5 drop-shadow-[0_0_2px_rgba(255,255,255,0.95)] transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)]",
               open ? "rotate-[225deg] gap-[2px]" : "gap-[3px]",
             )}
           >
@@ -642,6 +656,7 @@ export function SiteHeader({
                         <Link
                           href={item.href}
                           onClick={() => setOpen(false)}
+                          data-cinema-nav={item.cinema ? "" : undefined}
                           className="group flex items-center justify-between py-1"
                         >
                           <span className="flex items-baseline gap-3">

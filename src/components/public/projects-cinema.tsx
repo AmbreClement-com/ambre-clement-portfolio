@@ -69,18 +69,27 @@ export function ProjectsCinema({
 }) {
   const n = projects.length;
   const [active, setActive] = useState(0);
+  // Ouverture en cours → on masque le HUD DU CINÉMA : c'est le calque persistant du cadre
+  // (z-90) qui prend le relais et se décode (Matrix), pour n'avoir qu'UN seul HUD.
+  const [opening, setOpening] = useState(false);
+  // Retour depuis un projet : le HUD du projet est porté par le calque persistant du cadre
+  // (qui se décode). On garde le HUD PROPRE du cinéma masqué jusqu'à ce que ce calque rende
+  // la main (`ac:hud-release`) → un seul HUD, pas de doublon à l'atterrissage.
+  const [returning, setReturning] = useState(false);
   const reduced = usePrefersReducedMotion();
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const stripRef = useRef<HTMLDivElement | null>(null);
+  const mStripRef = useRef<HTMLDivElement | null>(null); // bande horizontale (mobile)
   const lenisRef = useRef<Lenis | null>(null);
 
   const router = useRouter();
   const busy = useRef(false);
   // Ouverture d'un projet : transition partagée (couverture = élément partagé),
   // miroir exact du changement de page, navbar figée.
-  const onCover = (e: React.MouseEvent, slug: string) => {
+  const onCover = (e: React.MouseEvent, proj: P, idx: number) => {
+    const slug = proj.slug;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
     // Réglage back-office : ouverture désactivée → navigation directe.
@@ -104,11 +113,21 @@ export function ProjectsCinema({
       return;
     }
     busy.current = true;
+    setOpening(true); // masque le HUD du cinéma → le calque persistant du cadre prend le relais
     openProject(
       img as HTMLImageElement,
       slug,
       () => router.push(`/projects/${slug}`),
       transitionSpeed,
+      // Infos du projet destination → le HUD persiste pendant l'ouverture (comme
+      // projet → projet), affiché par le calque persistant du cadre (z-90).
+      {
+        title: proj.title,
+        location: proj.location,
+        year: year(proj.shotDate),
+        index: idx + 1,
+        total: n,
+      },
     );
   };
 
@@ -117,6 +136,11 @@ export function ProjectsCinema({
   useIsoLayoutEffect(() => {
     if (reduced || n === 0) return;
     const slug = consumeReturnSlug();
+    // HUD masqué jusqu'à `ac:hud-release` si une transition HUD arrive DANS ce cinéma :
+    // retour d'un projet (slug) OU navigation cinéma → cinéma (`data-hud-persist` déjà posé
+    // par le cadre côté page source). Le calque persistant porte le HUD en attendant.
+    const incoming = document.documentElement.hasAttribute("data-hud-persist");
+    if (slug || incoming) setReturning(true);
     if (!slug) return;
     const i = projects.findIndex((p) => p.slug === slug);
     if (i < 0) return;
@@ -131,10 +155,61 @@ export function ProjectsCinema({
     setActive(i);
   }, []);
 
+  // Le calque persistant du cadre a fini de rendre la main → on ré-affiche le HUD du cinéma
+  // EXACTEMENT à cet instant (il disparaît en même temps) : jamais deux HUD à l'écran.
+  // Filet de sécurité : si l'event n'arrive pas, on ré-affiche quand même après un délai.
+  useEffect(() => {
+    if (!returning) return;
+    const reveal = () => setReturning(false);
+    window.addEventListener("ac:hud-release", reveal);
+    const safety = window.setTimeout(reveal, 3500);
+    return () => {
+      window.removeEventListener("ac:hud-release", reveal);
+      window.clearTimeout(safety);
+    };
+  }, [returning]);
+
+  // Diffuse le projet ACTIF au cadre → il peut porter ces infos sur son calque persistant
+  // (z-90) pendant une transition cinéma → cinéma, exactement comme entre deux pages projet.
+  useEffect(() => {
+    if (n === 0) return;
+    const p = projects[active] ?? projects[0];
+    window.dispatchEvent(
+      new CustomEvent("ac:cinema-hud", {
+        detail: {
+          title: p.title,
+          location: p.location,
+          year: year(p.shotDate),
+          index: active + 1,
+          total: n,
+        },
+      }),
+    );
+  }, [active, n, projects]);
+
+  // En QUITTANT le cinéma (toute transition de page), on masque son HUD : le calque
+  // persistant du cadre prend le relais (Matrix) sans doublon. `opening` sert aussi à
+  // l'ouverture d'un projet — même effet (masquage).
+  useEffect(() => {
+    const onExit = () => setOpening(true);
+    window.addEventListener("ac:page-exit", onExit);
+    return () => window.removeEventListener("ac:page-exit", onExit);
+  }, []);
+
+  // Au démontage du cinéma, on efface sa diffusion → une future navigation depuis une page
+  // SANS HUD (galerie) ne réutilisera pas par erreur ce projet actif comme source.
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent("ac:cinema-hud", { detail: null }));
+    };
+  }, []);
+
   useEffect(() => {
     if (reduced || n === 0) return;
     const STEP = 66; // hauteur vignette + écart (doit suivre les classes ci-dessous)
-    const lenis = new Lenis({ lerp: 0.08 });
+    // lerp élevé (avant 0.08) = inertie courte → le cinéma ne "glisse" plus entre deux
+    // projets après le geste ; recalage quasi immédiat.
+    const lenis = new Lenis({ lerp: 0.2 });
     lenisRef.current = lenis;
     let raf = 0;
     let last = -1;
@@ -144,6 +219,7 @@ export function ProjectsCinema({
       const wrap = wrapRef.current;
       if (wrap) {
         const vh = window.innerHeight;
+        const vw = window.innerWidth;
         const total = wrap.offsetHeight - vh; // course réelle en px
         const rectTop = wrap.getBoundingClientRect().top;
         const traveled = Math.min(Math.max(-rectTop, 0), total);
@@ -165,6 +241,18 @@ export function ProjectsCinema({
           stripRef.current.style.transform = `translateY(${(
             vh / 2 -
             (af + 0.5) * STEP
+          ).toFixed(2)}px)`;
+        }
+
+        // Bande horizontale mobile : centre la vignette active sur l'écran (suit le scroll).
+        // Pas = largeur RÉELLE d'une vignette + écart (mesuré → suit la taille responsive).
+        const mStrip = mStripRef.current;
+        const firstThumb = mStrip?.firstElementChild as HTMLElement | null;
+        if (mStrip && firstThumb) {
+          const stepX = firstThumb.offsetWidth + 6; // + gap-1.5
+          mStrip.style.transform = `translateX(${(
+            vw / 2 -
+            (af + 0.5) * stepX
           ).toFixed(2)}px)`;
         }
 
@@ -192,11 +280,14 @@ export function ProjectsCinema({
       const target = Math.round(af);
       if (Math.abs(af - target) < 0.012) return; // déjà aligné
       const desired = (target / (n - 1)) * total;
-      lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 0.6 });
+      // Recalage quasi instantané (avant : 0.6s → impression de flottement).
+      lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 0.14 });
     };
     const onScroll = () => {
       clearTimeout(idle);
-      idle = setTimeout(snap, 140);
+      // Dès que le scroll ralentit (faible vélocité), on recale IMMÉDIATEMENT au lieu
+      // d'attendre la fin de l'inertie → plus de temps mort "coincé" entre 2 projets.
+      idle = setTimeout(snap, Math.abs(lenis.velocity) < 5 ? 0 : 40);
     };
     lenis.on("scroll", onScroll);
 
@@ -271,7 +362,11 @@ export function ProjectsCinema({
       <ProjectTransitionMount />
       {/* Compteur "01 / 06" du projet actif dans le cadre global */}
       <FrameMeta title={categoryName} count={n} current={active + 1} />
-      <div className="sticky top-0 h-screen overflow-hidden">
+      {/* bg-white EXPLICITE : sert de fond au mix-blend-difference des métadonnées mobile.
+          Sans lui, le fond blanc de la page est dans un autre contexte d'empilement → le
+          texte blanc en mix-blend n'a rien à inverser hors de la photo (→ invisible). Avec,
+          le texte devient noir sur le blanc et reste inversé sur la photo : lisible partout. */}
+      <div className="sticky top-0 h-screen overflow-hidden bg-white">
         {/* Couches d'images empilées (fondu + dolly) */}
         <div className="absolute inset-0">
           {projects.map((p, i) => {
@@ -288,9 +383,9 @@ export function ProjectsCinema({
                 <Link
                   href={`/projects/${p.slug}`}
                   aria-label={`Ouvrir le projet ${p.title}`}
-                  onClick={(e) => onCover(e, p.slug)}
+                  onClick={(e) => onCover(e, p, i)}
                   {...(i === active ? { "data-cinema-cover": "" } : {})}
-                  className="group relative block h-[64vh] w-[78vw] max-w-[1080px] [&>picture]:block [&>picture]:h-full [&>picture]:w-full"
+                  className="group relative block h-[48vh] w-[54vw] max-w-[1080px] [&>picture]:block [&>picture]:h-full [&>picture]:w-full md:h-[64vh] md:w-[58vw] lg:w-[78vw]"
                 >
                   {cover && (
                     <ResponsiveImage
@@ -350,7 +445,10 @@ export function ProjectsCinema({
         </div>
 
         {/* Métadonnées (droite) */}
-        <div className="pointer-events-none absolute right-5 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-6 text-right md:flex md:right-8">
+        <div
+          data-cinema-hud
+          className={`pointer-events-none absolute right-5 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-6 text-right md:flex md:right-8 ${opening || returning ? "opacity-0" : ""}`}
+        >
           <div className="font-mono text-6xl font-light leading-none tabular-nums text-neutral-900">
             {pad(active + 1)}
           </div>
@@ -359,11 +457,79 @@ export function ProjectsCinema({
           {y && <Meta label="Année">{y}</Meta>}
         </div>
 
-        {/* Titre (mobile uniquement — sur desktop le HUD de droite l'affiche) */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-5 py-6 md:hidden">
-          <div className="font-mono text-sm uppercase tracking-[0.2em] text-neutral-800">
-            {current.title}
-            {current.location ? ` — ${current.location}` : ""}
+        {/* Métadonnées MOBILE — MÊME STYLE que le HUD desktop (grand n° + Projet/Lieu/
+            Année, aligné à droite), en inversion de couleur (mix-blend) pour être lisible
+            par-dessus la photo.
+            Collé à DROITE (`right-5`) comme le desktop. Lisible partout grâce au `bg-white`
+            du conteneur (cf. plus haut) : noir sur le blanc, inversé sur la photo.
+            `mix-blend` + `z-[110]` sur le MÊME élément (sinon le z-index l'isole et le blend
+            ne voit plus la photo). */}
+        <div
+          data-cinema-hud
+          className={`pointer-events-none absolute right-5 top-1/2 z-[110] flex max-w-[80vw] -translate-y-1/2 flex-col items-end gap-3 text-right font-mono uppercase text-white mix-blend-difference md:hidden ${opening || returning ? "opacity-0" : ""}`}
+        >
+          <div className="text-5xl font-normal leading-none tabular-nums">
+            {pad(active + 1)}
+          </div>
+          <div>
+            <div className="text-[10px] tracking-[0.2em] opacity-60">Projet</div>
+            <div className="mt-0.5 text-xs font-semibold tracking-[0.15em]">{current.title}</div>
+          </div>
+          {current.location && (
+            <div>
+              <div className="text-[10px] font-semibold tracking-[0.2em] opacity-90">Lieu</div>
+              <div className="mt-0.5 text-xs font-semibold tracking-[0.15em]">
+                {current.location}
+              </div>
+            </div>
+          )}
+          {y && (
+            <div>
+              <div className="text-[10px] font-semibold tracking-[0.2em] opacity-90">Année</div>
+              <div className="mt-0.5 text-xs font-semibold tracking-[0.15em]">{y}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Bande de vignettes de navigation (mobile) — en bas. DÉFILE avec le scroll pour
+            centrer le projet actif (piste translatée par `mStripRef`, comme la bande
+            verticale du desktop). Conteneur `overflow-hidden` : les vignettes hors écran
+            sont masquées. `pointer-events-none` sur le rail, `auto` sur chaque vignette. */}
+        {/* Position JUSTE SOUS la photo : la couverture fait 48vh centrée → son bas est à
+            74vh du haut, donc on ancre la bande à 76vh (et 75vh sur écran haut où on la
+            remonte un peu). h-16 = assez haut pour la plus grande vignette. */}
+        <div className="pointer-events-none absolute inset-x-0 top-[76vh] z-[110] h-16 overflow-hidden md:hidden [@media(min-height:800px)]:top-[75vh]">
+          <div
+            ref={mStripRef}
+            className="absolute left-0 top-0 flex gap-1.5 will-change-transform"
+          >
+            {projects.map((p, i) => {
+              const cov = p.photos[0];
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-label={`Aller au projet ${p.title}`}
+                  className={`pointer-events-auto h-12 w-16 shrink-0 overflow-hidden border transition-all duration-300 [@media(min-height:800px)]:h-16 [@media(min-height:800px)]:w-24 ${
+                    i === active
+                      ? "border-neutral-900 opacity-100"
+                      : "border-neutral-300 opacity-45"
+                  }`}
+                >
+                  {cov && (
+                    <ResponsiveImage
+                      variants={cov.variants}
+                      alt={cov.altText}
+                      width={cov.width}
+                      height={cov.height}
+                      sizes="96px"
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

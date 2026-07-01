@@ -127,6 +127,10 @@
   }
   html {
     @apply font-sans;
+    /* Filet de sécurité anti-scroll horizontal (320px+). `clip` (et non `hidden`)
+       ne crée pas de conteneur de défilement → n'affecte ni le scroll vertical ni
+       les éléments `position: sticky` (sidebar admin). */
+    overflow-x: clip;
   }
 }
 /* ============================================================
@@ -299,4 +303,28 @@ html.ac-hide-scrollbar::-webkit-scrollbar {
     transform: none;
     transition: none;
   }
+}
+
+/* Verre dépoli des barres (nav + admin) : flou d'arrière-plan + saturation, sans
+   déformation (le déplacement SVG bavait sur les bords et « cassait » la photo). Rendu net
+   et identique sur tous les navigateurs. */
+.glass-refract {
+  -webkit-backdrop-filter: blur(2px) saturate(1.35);
+  backdrop-filter: blur(2px) saturate(1.35);
+}
+
+/* Admin connecté : sur mobile + petite tablette (< lg), la barre admin flottante occupe
+   le bas-centre. On remonte donc la nav prev/suivant du cadre (.project-nav) pour qu'elle
+   ne soit pas recouverte. Marqueur data-authed posé par la barre admin. */
+@media (max-width: 1023px) {
+  html[data-authed] .project-nav {
+    bottom: 6rem !important;
+  }
+}
+
+/* Ouverture / retour projet : le HUD du projet est porté par le calque persistant du
+   cadre (z-90, qui se décode en Matrix). On masque alors le HUD PROPRE du cinéma pour
+   n'en avoir qu'UN seul à l'écran. Marqueur posé/retiré par le SiteFrame. */
+html[data-hud-persist] [data-cinema-hud] {
+  opacity: 0;
 }

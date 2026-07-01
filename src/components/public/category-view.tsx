@@ -21,8 +21,11 @@ export async function CategoryView({ category }: { category: Category }) {
       getSettings().catch(() => null),
     ]);
     const anims = resolveAnimations(settings?.animations);
+    // Marge élargie et SYMÉTRIQUE sur tablette (px-16 = 64px) : la gauche doit dégager les
+    // icônes réseaux du cadre (left-8 + size-4 = 48px), et on garde la galerie centrée en
+    // appliquant la même marge à droite. Desktop inchangé (lg:px-12 = 48px).
     return (
-      <div className="w-full px-6 pb-10 pt-24 md:px-12">
+      <div className="w-full px-11 pb-[4.5rem] pt-32 md:px-16 md:pb-24 md:pt-24 lg:px-12">
         {/* Le nom de la page s'affiche dans le cadre global (haut gauche). */}
         <FrameMeta title={category.name} count={photos.length} unit="Photos" />
         <h1 className="sr-only">{category.name} — Ambre Clément</h1>

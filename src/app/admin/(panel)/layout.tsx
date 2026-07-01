@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { WelcomeOverlay } from "@/components/admin/welcome-overlay";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
@@ -51,34 +52,37 @@ export default async function AdminLayout({
   const firstName = session.user.firstName ?? null;
   const theme = isThemeKey(me?.theme) ? me.theme : "default";
 
+  const navProps = {
+    role: session.user.role,
+    isDev: process.env.NODE_ENV !== "production",
+    categories: cats.map((c) => ({ id: c.id, name: c.name, type: c.type })),
+    projects: projs.map((p) => ({
+      id: p.id,
+      title: p.title,
+      categoryId: p.categoryId,
+    })),
+    tarifs: tarifs.map((t) => ({ id: t.id, title: t.title })),
+  };
+
   return (
     <div
       id="admin-root"
       data-theme={theme}
-      className="flex min-h-screen bg-background text-foreground"
+      className="flex min-h-screen flex-col bg-background text-foreground md:flex-row"
     >
-      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col self-start overflow-y-auto border-r border-border bg-card p-4">
+      {/* Mobile (< md) : barre + tiroir. Tablette/desktop : masqué au profit de la sidebar. */}
+      <AdminMobileNav {...navProps} />
+
+      {/* Tablette/desktop (md+) : sidebar fixe (comportement d'origine). */}
+      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col self-start overflow-y-auto border-r border-border bg-card p-4 md:flex">
         <p className="mb-6 flex items-center gap-2 px-2 text-sm font-semibold tracking-wide">
           <span className="size-2 rounded-full bg-primary" />
           Administration
         </p>
-        <AdminNav
-          role={session.user.role}
-          isDev={process.env.NODE_ENV !== "production"}
-          categories={cats.map((c) => ({
-            id: c.id,
-            name: c.name,
-            type: c.type,
-          }))}
-          projects={projs.map((p) => ({
-            id: p.id,
-            title: p.title,
-            categoryId: p.categoryId,
-          }))}
-          tarifs={tarifs.map((t) => ({ id: t.id, title: t.title }))}
-        />
+        <AdminNav {...navProps} />
       </aside>
-      <main className="flex-1 p-6 pb-28 md:p-8 md:pb-28">
+
+      <main className="min-w-0 flex-1 p-4 pb-28 md:p-8 md:pb-28">
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
       <Toaster />

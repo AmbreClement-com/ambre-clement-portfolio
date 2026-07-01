@@ -138,7 +138,7 @@ export function CategoriesManager({ initial }: { initial: Cat[] }) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="Nom du nouvel onglet (ex. Mariage)"
-          className="w-64"
+          className="w-full sm:w-64"
         />
         <TypeToggle value={newType} onChange={setNewType} />
         <Button

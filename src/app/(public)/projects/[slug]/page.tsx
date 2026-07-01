@@ -101,8 +101,8 @@ export default async function ProjectPage({ params }: Params) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify([jsonLd, breadcrumb]) }}
       />
       <ProjectTransitionMount />
-      <ProjectBackButton cinemaUrl={cinemaUrl} />
-      <div className="w-full px-6 pb-10 pt-24 md:px-12">
+      <ProjectBackButton cinemaUrl={cinemaUrl} slug={project.slug} />
+      <div className="w-full px-11 pb-[4.5rem] pt-32 md:px-16 md:pb-24 md:pt-24 lg:px-12">
         <FrameMeta
           title={frameTitle}
           count={project.photos.length}

@@ -29,11 +29,17 @@ const pick = (s: string) => s[(Math.random() * s.length) | 0];
  *  pendant le Matrix (cf. `setNowrap`). */
 function scrambleChar(ch: string) {
   if (ch >= "0" && ch <= "9") return pick(DI);
-  if (/[a-zà-ÿ]/.test(ch)) return pick(LO);
-  if (/[A-ZÀ-Ÿ]/.test(ch)) return pick(UP);
+  // Toute LETTRE à casse (y compris accentuée/latin étendu : É, Ÿ, Œ, Ŝ…) → une lettre
+  // ASCII PLATE de même casse. Indispensable : sinon un caractère accentué « préservé »
+  // s'afficherait plus HAUT (accent au-dessus) que les autres pendant le Matrix.
+  const lo = ch.toLowerCase();
+  const up = ch.toUpperCase();
+  if (lo !== up) return ch === lo ? pick(LO) : pick(UP);
   return ch; // espaces et ponctuation conservés
 }
-const ALNUM = /[0-9A-Za-zÀ-ÿ]/;
+// Tout caractère « brouillable » : n'importe quelle lettre ou chiffre Unicode (cohérent
+// avec scrambleChar → aucune lettre accentuée n'est préservée/affichée en grand).
+const ALNUM = /[\p{L}\p{N}]/u;
 
 // Mémoire de la VRAIE valeur de chaque nœud texte. Indispensable car certains
 // nœuds du cadre (©, email, mentions) PERSISTENT entre les pages et React ne les
@@ -46,7 +52,10 @@ const lastWritten = new WeakMap<Text, string>(); // dernière valeur qu'ON a éc
  *  React (ou le 1er rendu) y a mis le vrai texte → on (re)mémorise. Sinon le nœud
  *  est encore brouillé par nous → on rend la valeur mémorisée. */
 function realOf(node: Text): string {
-  const cur = node.nodeValue ?? "";
+  // NFC : fusionne les accents COMBINANTS (forme décomposée, ex. "e"+U+0301) avec leur
+  // lettre → un seul caractère (é) qui se brouille en lettre plate. Sinon l'accent
+  // combinant, non brouillé, resterait au-dessus d'une lettre aléatoire → « lettre » haute.
+  const cur = (node.nodeValue ?? "").normalize("NFC");
   const lw = lastWritten.get(node);
   if (lw === undefined || cur !== lw) {
     realText.set(node, cur);
@@ -263,9 +272,100 @@ export function SiteFrame({
   const [persistInfo, setPersistInfo] = useState<
     NonNullable<FrameMetaData["projectInfo"]> | null
   >(null);
+  // Tant que le calque persistant (z-90) porte le HUD, on masque le HUD PROPRE du cinéma
+  // (marqueur global lu en CSS) → un SEUL HUD visible pendant ouverture ET retour.
+  useEffect(() => {
+    const el = document.documentElement;
+    if (hudPersist) el.setAttribute("data-hud-persist", "");
+    else el.removeAttribute("data-hud-persist");
+  }, [hudPersist]);
+  // Lecture à jour de hudPersist dans les handlers d'event (closures figées sur []).
+  const hudPersistRef = useRef(hudPersist);
+  useEffect(() => {
+    hudPersistRef.current = hudPersist;
+  }, [hudPersist]);
+  // Projet ACTIF du cinéma courant (diffusé par ProjectsCinema) → source du HUD pour une
+  // transition cinéma → cinéma, et cible que l'overlay doit atteindre à l'arrivée.
+  const cinemaActiveRef = useRef<
+    NonNullable<FrameMetaData["projectInfo"]> | null
+  >(null);
+  useEffect(() => {
+    const onCinemaHud = (e: Event) => {
+      const info = (
+        e as CustomEvent<NonNullable<FrameMetaData["projectInfo"]> | null>
+      ).detail;
+      cinemaActiveRef.current = info ?? null;
+      // Transition HUD en cours → l'overlay suit le projet actif du cinéma d'arrivée
+      // (source → destination), pour se résoudre dessus en fin d'animation.
+      if (hudPersistRef.current && info) setPersistInfo(info);
+    };
+    window.addEventListener("ac:cinema-hud", onCinemaHud);
+    return () => window.removeEventListener("ac:cinema-hud", onCinemaHud);
+  }, []);
   // Armé par les events de transition (onExit/onEnter/onProjectReveal) → distingue un
   // VRAI changement/ouverture de projet d'un simple chargement direct d'URL (sans Matrix).
   const armDecode = useRef(false);
+  // Ouverture depuis le cinéma : le HUD est décodé DÈS LE DÉBUT (via `openTick`), pas à
+  // l'arrivée → cette garde empêche le décodage d'arrivée (projKey) de le REFAIRE.
+  const startDecodedRef = useRef(false);
+  const [openTick, setOpenTick] = useState(0);
+
+  // ── Décodage Matrix du HUD pour OUVERTURE & RETOUR ──────────────────────────────
+  // Le brouillage tourne EN CONTINU (boucle rAF) tant que l'animation n'est pas finie,
+  // puis on « écrit » le texte (résolution gauche→droite). Sans ça, le décodage se
+  // terminait en ~1,25 s et le HUD restait figé pendant le reste (long) de la transition.
+  const hudCtl = useRef<{ nodes: Text[]; raf: number; done: boolean } | null>(null);
+  // Fige la boucle de brouillage SANS résoudre → le HUD reste brouillé, prêt à être décodé
+  // DANS le même tween que le reste (cadre + contenu) pour une résolution SYNCHRONE.
+  // Retourne true si une boucle était active (→ il faudra inclure le HUD au décodage).
+  const stopHudLoop = () => {
+    const ctl = hudCtl.current;
+    const had = !!ctl && !ctl.done;
+    if (ctl && !ctl.done) {
+      ctl.done = true;
+      cancelAnimationFrame(ctl.raf);
+    }
+    hudCtl.current = null;
+    return had;
+  };
+  // Résolution immédiate (nettoyage) : stoppe la boucle et fige le HUD sur son vrai texte.
+  const finishHudScramble = (instant = false) => {
+    const ctl = hudCtl.current;
+    if (!ctl || ctl.done) return;
+    const { nodes } = ctl;
+    stopHudLoop();
+    if (instant) {
+      nodes.forEach((nd) => resolveNode(nd));
+      setNowrap(nodes, false);
+    }
+  };
+  const startHudScramble = () => {
+    finishHudScramble(true); // stoppe un éventuel brouillage précédent
+    const el = hudRef.current;
+    if (!el) return;
+    let nodes = collectTextNodes(el);
+    if (!nodes.length) return;
+    setNowrap(nodes, true);
+    const ctl = { nodes, raf: 0, done: false };
+    hudCtl.current = ctl;
+    const tick = () => {
+      if (ctl.done) return;
+      // On RE-collecte à chaque frame : en projet → projet le texte du HUD change en cours
+      // de route (source → destination) → on suit les nouveaux nœuds sans se figer. On ne
+      // ré-applique `setNowrap` (coûteux : force un layout) que si la STRUCTURE change.
+      const cur = hudRef.current ? collectTextNodes(hudRef.current) : nodes;
+      if (cur.length) {
+        if (cur.length !== nodes.length) setNowrap(cur, true);
+        nodes = cur;
+        ctl.nodes = cur;
+      }
+      nodes.forEach((nd) => scrambleNode(nd)); // cycle aléatoire à chaque frame
+      ctl.raf = requestAnimationFrame(tick);
+    };
+    nodes.forEach((nd) => scrambleNode(nd)); // brouille AVANT le paint (pas de flash clair)
+    ctl.raf = requestAnimationFrame(tick);
+  };
+
   // Décodage Matrix du HUD ACTIF (calque persistant OU HUD du cadre — un seul est monté,
   // les deux portent `hudRef`), au changement de projet, une fois le nouveau contenu écrit.
   const projKey = meta?.projectInfo
@@ -273,6 +373,11 @@ export function SiteFrame({
     : null;
   useIsoLayoutEffect(() => {
     if (!projKey || !armDecode.current) return; // trou nav / page sans projet / chargement direct
+    if (hudCtl.current) return; // un brouillage continu est en cours → il gère la résolution
+    if (startDecodedRef.current) {
+      startDecodedRef.current = false; // ouverture déjà décodée au démarrage → pas de re-décodage
+      return;
+    }
     armDecode.current = false;
     const el = hudRef.current;
     if (!el) return;
@@ -297,6 +402,20 @@ export function SiteFrame({
       tw.kill();
     };
   }, [projKey]);
+
+  // OUVERTURE depuis le cinéma : le HUD (calque persistant, déjà monté avec les infos
+  // du projet) se décode IMMÉDIATEMENT — dès le début de l'animation, et non à l'arrivée
+  // sur la page projet. Même effet Matrix que projet → projet, lancé tout de suite.
+  useIsoLayoutEffect(() => {
+    if (!openTick) return; // 0 = montage initial, rien à décoder
+    startDecodedRef.current = true; // l'arrivée (projKey) ne doit PAS re-décoder
+    armDecode.current = false;
+    // Brouillage CONTINU dès le départ → il RESTE tant que la transition n'est pas finie.
+    // La résolution (« écriture ») est déclenchée par la fin de l'anim : onProjectReveal
+    // (ouverture) ou onEnter (retour). Cf. finishHudScramble.
+    startHudScramble();
+    return () => finishHudScramble(true);
+  }, [openTick]);
 
   useIsoLayoutEffect(() => {
     if (pageZoom.value >= 0.999) return;
@@ -404,16 +523,53 @@ export function SiteFrame({
     // si une révélation projet démarre (sinon elle continue d'écrire pageZoom → conflit).
     let exitTl: gsap.core.Timeline | null = null;
 
+    // Boucle de brouillage CONTINU du cadre + contenu pendant l'ENTRÉE (miroir de la boucle
+    // du HUD) : tout reste en Matrix jusqu'à la résolution COMMUNE. Sans elle, en décalant le
+    // décodage vers la fin, le texte de la nouvelle page resterait CLAIR au début (flash).
+    let fmScramble: { raf: number; done: boolean } | null = null;
+    const stopFmLoop = () => {
+      if (fmScramble && !fmScramble.done) {
+        fmScramble.done = true;
+        cancelAnimationFrame(fmScramble.raf);
+      }
+      fmScramble = null;
+    };
+    const startFrameMainScramble = () => {
+      stopFmLoop();
+      const ctl = { raf: 0, done: false };
+      fmScramble = ctl;
+      const tick = () => {
+        if (ctl.done) return;
+        const soft = pathRef.current === "/contact"; // Contact = contenu manuscrit
+        const mainNodes = mainText();
+        const frameNodes = frameText();
+        setNowrap([...mainNodes, ...frameNodes], true);
+        frameNodes.forEach((f) => scrambleNode(f)); // cadre : toujours Matrix
+        // contenu : Matrix, SAUF Contact où on le maintient VIDE (prêt à s'écrire à la fin,
+        // sinon son texte clair « flasherait » avant l'écriture manuscrite).
+        mainNodes.forEach((f) => (soft ? writeNode(f, 0) : scrambleNode(f)));
+        ctl.raf = requestAnimationFrame(tick);
+      };
+      ctl.raf = requestAnimationFrame(tick);
+    };
+
     // DÉCRYPTAGE du texte (entrée) — partagé par onEnter ET la révélation projet.
     // On capture le texte APRÈS que React ait écrit les NOUVEAUX libellés (2 frames),
     // sinon on décrypte vers l'ancien texte (caractères figés).
     const runDecode = () => {
+      stopFmLoop(); // fige la boucle cadre+contenu → décodé dans le MÊME tween
+      // Fige TOUT DE SUITE la boucle du HUD → il sera décodé DANS le même tween que le reste
+      // (cadre + contenu), donc départ ET fin synchrones pour tous les effets Matrix.
+      const hadHud = stopHudLoop();
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           const soft = pathRef.current === "/contact";
           const mainNodes = mainText();
           const frameNodes = frameText();
-          const fx = [...mainNodes, ...frameNodes];
+          const hudNodes =
+            hadHud && hudRef.current ? collectTextNodes(hudRef.current) : [];
+          const fx = [...mainNodes, ...frameNodes, ...hudNodes];
+          if (!fx.length) return;
           setNowrap(fx, true);
           const p = { d: 0 };
           gsap.to(p, {
@@ -423,6 +579,7 @@ export function SiteFrame({
             onUpdate: () => {
               mainNodes.forEach((f) => (soft ? writeNode(f, p.d) : decodeNode(f, p.d)));
               frameNodes.forEach((f) => decodeNode(f, p.d));
+              hudNodes.forEach((f) => decodeNode(f, p.d)); // HUD = même horloge
             },
             onComplete: () => {
               fx.forEach((f) => resolveNode(f));
@@ -438,7 +595,25 @@ export function SiteFrame({
       // Destination connue dès le clic (navbar) → décide si le HUD projet PERSISTE
       // (projet → projet : source ET destination ont des infos) ou s'il part avec le
       // cadre (toute autre destination).
-      const href = (e as CustomEvent<{ href?: string }>).detail?.href;
+      const detail = (
+        e as CustomEvent<{
+          href?: string;
+          projectInfo?: typeof persistInfo;
+          projectClose?: boolean;
+          cinemaNav?: boolean;
+        }>
+      ).detail;
+      const href = detail?.href;
+      // Retour projet → cinéma (bouton Retour) : source ET destination montrent le MÊME
+      // projet → on veut le MÊME rendu que l'ouverture (HUD persistant + Matrix au départ).
+      const projectClose = detail?.projectClose ?? false;
+      // Navigation vers un CINÉMA projets (via navbar) : le HUD (projet actif) persiste et
+      // se décode, exactement comme projet → projet. (Faux pour une galerie photo → rien.)
+      const cinemaNav = detail?.cinemaNav ?? false;
+      // Ouverture depuis le cinéma : les infos du projet DESTINATION sont fournies
+      // directement (pas de href) → le HUD persiste (calque z-90) pendant l'ouverture,
+      // comme lors d'un changement projet → projet.
+      const providedInfo = detail?.projectInfo ?? null;
       let toProject = false;
       if (href) {
         try {
@@ -447,17 +622,41 @@ export function SiteFrame({
           );
         } catch {}
       }
-      const cur = metaRef.current?.projectInfo ?? null;
-      if (toProject && cur) {
-        setPersistInfo(cur); // infos SOURCE, affichées le temps du trou meta=null
+      // Source du HUD : projet courant (page projet) OU projet actif du cinéma (diffusé via
+      // `ac:cinema-hud`) pour une navigation cinéma → cinéma.
+      const cur = metaRef.current?.projectInfo ?? cinemaActiveRef.current ?? null;
+      const persist =
+        providedInfo ??
+        ((toProject || projectClose || cinemaNav) && cur ? cur : null);
+      // Brouillage Matrix CONTINU (jusqu'à la fin de l'anim) dès que le HUD projet persiste :
+      // ouverture cinéma, retour projet → cinéma, projet → projet ET cinéma → cinéma.
+      // Exclut naturellement projet/cinéma → galerie (pas de HUD projet → `persist` nul).
+      const startNow = !!persist;
+      startDecodedRef.current = false; // repart propre pour CETTE transition
+      if (persist) {
+        // Masque IMMÉDIATEMENT (synchrone) le HUD DANS le cadre : `setHudPersist(true)` est
+        // un état React appliqué 1-2 frames plus tard, or le dézoom GSAP démarre tout de
+        // suite → sinon le HUD du cadre « part avec le cadre » le temps de ces frames
+        // (visible surtout au RETOUR, où l'on quitte une page projet qui a ce HUD).
+        // UNIQUEMENT si le HUD est encore DANS le cadre (hudPersist faux) : sinon hudRef
+        // pointe déjà sur le calque persistant (z-90) qu'il ne faut SURTOUT pas masquer.
+        if (!hudPersistRef.current && hudRef.current)
+          gsap.set(hudRef.current, { autoAlpha: 0 });
+        setPersistInfo(persist); // affichées par le calque z-90 pendant la transition
         setHudPersist(true); // le calque persistant (z-90) prend le relais
       }
+      if (startNow) setOpenTick((t) => t + 1);
       armDecode.current = true; // un changement/ouverture de projet va suivre → Matrix OK
       prepMain();
       const soft = pathRef.current === "/contact"; // Contact = contenu manuscrit
       const mainNodes = mainText();
       const frameNodes = frameText();
-      setNowrap([...mainNodes, ...frameNodes], true);
+      // HUD source (grand numéro) : quand il NE persiste PAS (ex. projet/cinéma → galerie),
+      // il n'a aucun décodage propre → sans ça il resterait CLAIR (un gros chiffre net au
+      // milieu du texte qui se brouille). On le brouille donc avec le reste, à la sortie.
+      const hudExitNodes =
+        !persist && hudRef.current ? collectTextNodes(hudRef.current) : [];
+      setNowrap([...mainNodes, ...frameNodes, ...hudExitNodes], true);
       const tl = gsap.timeline();
       exitTl = tl;
       tl.timeScale(speedRef.current); // vitesse globale (réglage back-office)
@@ -481,6 +680,7 @@ export function SiteFrame({
           onUpdate: () => {
             mainNodes.forEach((f) => (soft ? eraseNode(f, p.s) : scrambleNode(f)));
             frameNodes.forEach((f) => scrambleNode(f));
+            hudExitNodes.forEach((f) => scrambleNode(f)); // le grand numéro se brouille aussi
           },
         },
         0,
@@ -504,6 +704,9 @@ export function SiteFrame({
           // Transition finie → le calque persistant rend la main au HUD du cadre
           // (qui affiche désormais le nouveau projet, déjà décodé).
           setHudPersist(false);
+          // …et au HUD PROPRE du cinéma : il se ré-affiche EXACTEMENT à cet instant
+          // (le calque persistant disparaît en même temps) → un seul HUD, sans double.
+          window.dispatchEvent(new Event("ac:hud-release"));
         },
       });
       tl.timeScale(speedRef.current); // vitesse globale (réglage back-office)
@@ -516,8 +719,13 @@ export function SiteFrame({
         { v: 0, duration: 1.5, ease: "power3.out", onUpdate: () => setFrame(c.v) },
         0.78,
       );
-
-      runDecode(); // le texte se ré-écrit (décryptage gauche→droite)
+      // Décodage du texte (cadre + contenu + HUD, MÊME tween → tout démarre et finit
+      // ensemble). Le cadre + contenu sont brouillés EN CONTINU dès l'entrée (comme le HUD),
+      // puis TOUT se résout ENSEMBLE près de l'atterrissage → le Matrix reste jusqu'au bout,
+      // sans flash de texte clair (ex. le nom d'une galerie qui apparaissait au milieu).
+      // Vaut pour TOUTES les navigations (galerie comprise), pas seulement celles à HUD.
+      startFrameMainScramble();
+      tl.call(() => runDecode(), undefined, 0.95);
     };
 
     // RÉVÉLATION PROJET : la galerie remplit déjà le petit cadre (zoomée sur sa 1re
@@ -547,7 +755,7 @@ export function SiteFrame({
         { v: 0, duration: 0.35, ease: "power2.out", onUpdate: () => setFrame(c.v, true) },
         0,
       );
-      runDecode(); // le texte du cadre se ré-écrit (plus de Matrix figé)
+      runDecode(); // cadre + contenu + HUD se ré-écrivent ENSEMBLE (même tween)
     };
 
     window.addEventListener("ac:page-exit", onExit);
@@ -557,6 +765,7 @@ export function SiteFrame({
       window.removeEventListener("ac:page-exit", onExit);
       window.removeEventListener("ac:page-enter", onEnter);
       window.removeEventListener("ac:project-reveal", onProjectReveal);
+      stopFmLoop();
     };
   }, []);
 
@@ -579,7 +788,7 @@ export function SiteFrame({
         <div
           ref={hudRef}
           data-frame-hud
-          className="pointer-events-none fixed right-5 top-1/2 z-[90] hidden -translate-y-1/2 select-none flex-col items-end gap-5 text-right font-mono font-bold uppercase text-white mix-blend-difference md:right-8 md:flex"
+          className="pointer-events-none fixed right-5 top-1/2 z-[90] flex -translate-y-1/2 select-none flex-col items-end gap-5 text-right font-mono font-bold uppercase text-white mix-blend-difference md:right-8"
         >
           <HudInner info={overlayInfo} />
         </div>
@@ -602,12 +811,12 @@ export function SiteFrame({
       <span
         ref={tlc}
         data-frame-mark
-        className="absolute left-5 top-24 size-4 border-l border-t border-white md:left-8 md:top-14"
+        className="absolute left-5 top-[6.5rem] size-4 border-l border-t border-white md:left-8 md:top-14"
       />
       <span
         ref={trc}
         data-frame-mark
-        className="absolute right-5 top-24 size-4 border-r border-t border-white md:right-8 md:top-14"
+        className="absolute right-5 top-[6.5rem] size-4 border-r border-t border-white md:right-8 md:top-14"
       />
       <span
         ref={blc}
@@ -620,12 +829,12 @@ export function SiteFrame({
         className="absolute bottom-12 right-5 size-4 border-b border-r border-white md:bottom-14 md:right-8"
       />
 
-      <div className="absolute left-5 top-[4.5rem] text-[11px] tracking-[0.14em] md:left-8 md:top-5 md:text-xs">
+      <div className="absolute left-5 top-20 text-[11px] tracking-[0.14em] md:left-8 md:top-5 md:text-xs">
         {meta.title}
       </div>
 
       {typeof meta.count === "number" && meta.count > 0 && (
-        <div className="absolute right-5 top-[4.5rem] text-right text-[11px] tracking-[0.14em] tabular-nums md:right-8 md:top-5 md:text-xs">
+        <div className="absolute right-5 top-20 text-right text-[11px] tracking-[0.14em] tabular-nums md:right-8 md:top-5 md:text-xs">
           {typeof meta.current === "number" ? (
             `(${pad2(meta.current)} / ${pad2(meta.count)})`
           ) : (
@@ -637,7 +846,9 @@ export function SiteFrame({
         </div>
       )}
 
-      <div className="absolute bottom-4 left-5 hidden items-center text-[11px] tracking-[0.14em] md:left-8 md:flex md:text-xs">
+      {/* Copyright — bas-gauche. Mobile : texte réduit pour tenir au coin sans chevaucher
+          la nav centrale. */}
+      <div className="absolute bottom-4 left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
         <span>
           ©{year}&nbsp;{domain()}
         </span>
@@ -650,7 +861,7 @@ export function SiteFrame({
         <div
           ref={hudRef}
           data-frame-hud
-          className="absolute right-5 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-5 text-right md:right-8 md:flex"
+          className="absolute right-5 top-1/2 flex -translate-y-1/2 flex-col items-end gap-5 text-right md:right-8"
         >
           <HudInner info={frameInfo} />
         </div>
@@ -658,7 +869,8 @@ export function SiteFrame({
 
       {/* Navigation projet — fait partie du cadre (préc. / position / suiv.). */}
       {meta.nav && (
-        <div className="absolute bottom-4 left-1/2 flex max-w-[78vw] -translate-x-1/2 items-center gap-3 text-[11px] tracking-[0.14em] md:text-xs">
+        <div className="project-nav absolute bottom-16 left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-4 lg:gap-3 lg:text-xs">
+          {/* Précédent — bouton rond (mobile/tablette) · flèche + titre (desktop) */}
           {meta.nav.prevSlug ? (
             <Link
               href={`/projects/${meta.nav.prevSlug}`}
@@ -667,17 +879,32 @@ export function SiteFrame({
               aria-label={`Projet précédent : ${meta.nav.prevTitle ?? ""}`}
               className="pointer-events-auto flex min-w-0 items-center gap-1.5 transition-opacity hover:opacity-60"
             >
-              <span className="shrink-0">←</span>
-              <span className="truncate">{meta.nav.prevTitle}</span>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-current/25 lg:size-auto lg:border-0">
+                ←
+              </span>
+              <span className="hidden truncate lg:inline">{meta.nav.prevTitle}</span>
             </Link>
           ) : (
-            <span className="opacity-0">←</span>
+            <span aria-hidden className="flex size-9 items-center justify-center opacity-0 lg:size-auto">
+              ←
+            </span>
           )}
+
           <span className="shrink-0 tabular-nums opacity-80">
-            {meta.nav.prevNum != null && meta.nav.nextNum != null
-              ? `${pad2(meta.nav.prevNum)} / ${pad2(meta.nav.nextNum)}`
-              : `${pad2(meta.nav.index)} / ${pad2(meta.nav.total)}`}
+            {pad2(
+              meta.nav.prevNum != null && meta.nav.nextNum != null
+                ? meta.nav.prevNum
+                : meta.nav.index,
+            )}{" "}
+            /{" "}
+            {pad2(
+              meta.nav.prevNum != null && meta.nav.nextNum != null
+                ? meta.nav.nextNum
+                : meta.nav.total,
+            )}
           </span>
+
+          {/* Suivant */}
           {meta.nav.nextSlug ? (
             <Link
               href={`/projects/${meta.nav.nextSlug}`}
@@ -686,11 +913,15 @@ export function SiteFrame({
               aria-label={`Projet suivant : ${meta.nav.nextTitle ?? ""}`}
               className="pointer-events-auto flex min-w-0 items-center gap-1.5 transition-opacity hover:opacity-60"
             >
-              <span className="truncate">{meta.nav.nextTitle}</span>
-              <span className="shrink-0">→</span>
+              <span className="hidden truncate lg:inline">{meta.nav.nextTitle}</span>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-current/25 lg:size-auto lg:border-0">
+                →
+              </span>
             </Link>
           ) : (
-            <span className="opacity-0">→</span>
+            <span aria-hidden className="flex size-9 items-center justify-center opacity-0 lg:size-auto">
+              →
+            </span>
           )}
         </div>
       )}
@@ -717,7 +948,7 @@ export function SiteFrame({
 
       <Link
         href="/mentions-legales"
-        className="pointer-events-auto absolute bottom-28 right-4 [writing-mode:vertical-rl] rotate-180 text-[10px] tracking-[0.2em] opacity-25 transition-opacity hover:opacity-100 md:right-7"
+        className="pointer-events-auto absolute bottom-28 right-4 hidden [writing-mode:vertical-rl] rotate-180 text-[10px] tracking-[0.2em] opacity-25 transition-opacity hover:opacity-100 md:right-7 md:block"
       >
         Mentions légales
       </Link>
@@ -727,7 +958,7 @@ export function SiteFrame({
           type="button"
           onClick={copyEmail}
           aria-label={`Copier l'adresse email ${email}`}
-          className="pointer-events-auto absolute bottom-4 right-5 font-mono text-[11px] font-bold uppercase tracking-[0.14em] transition-opacity hover:opacity-60 md:right-8 md:text-xs"
+          className="pointer-events-auto absolute bottom-4 right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
         >
           {copied ? "Copié !" : email}
         </button>

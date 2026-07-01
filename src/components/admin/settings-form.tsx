@@ -190,12 +190,15 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
             </p>
           )}
           {socials.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div
+              key={i}
+              className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
+            >
               <select
                 value={s.platform}
                 onChange={(e) => patchSocial(i, { platform: e.target.value })}
                 aria-label="Réseau"
-                className="h-9 w-36 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="h-9 w-full shrink-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-36"
               >
                 {SOCIAL_PLATFORMS.map((p) => (
                   <option key={p} value={p}>
@@ -206,6 +209,7 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
               <Input
                 value={s.url}
                 onChange={(e) => patchSocial(i, { url: e.target.value })}
+                className="min-w-0 flex-1"
                 placeholder={
                   SOCIAL_META[s.platform as keyof typeof SOCIAL_META]
                     ?.placeholder
@@ -215,6 +219,7 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="shrink-0"
                 aria-label="Retirer"
                 onClick={() => removeSocial(i)}
               >

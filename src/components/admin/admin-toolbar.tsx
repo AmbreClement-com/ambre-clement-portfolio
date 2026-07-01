@@ -64,6 +64,16 @@ export function AdminToolbar() {
     return () => window.removeEventListener("ac:theme", onTheme);
   }, []);
 
+  // Marque <html data-authed> quand un admin est connecté → sur mobile/tablette, la nav
+  // prev/suivant du cadre remonte au-dessus de cette barre (cf. globals.css) pour ne pas
+  // être recouverte par elle.
+  useEffect(() => {
+    if (!me) return;
+    const el = document.documentElement;
+    el.setAttribute("data-authed", "");
+    return () => el.removeAttribute("data-authed");
+  }, [me]);
+
   if (!me) return null;
 
   const isAdmin = pathname.startsWith("/admin");
@@ -76,11 +86,12 @@ export function AdminToolbar() {
     <div className="pointer-events-none fixed inset-x-0 bottom-10 z-50 flex justify-center px-4 print:hidden">
       <div
         data-theme={theme}
-        className="pointer-events-auto relative flex items-center gap-1.5 overflow-hidden rounded-full border border-border bg-card/55 p-1.5 pl-3 text-foreground shadow-[0_12px_40px_-6px_rgba(0,0,0,0.3)] ring-1 ring-white/10 backdrop-blur-2xl backdrop-saturate-[1.8]"
+        className="glass-refract pointer-events-auto relative flex items-center gap-1.5 overflow-hidden rounded-full bg-white/18 p-1.5 text-neutral-900 shadow-[0_12px_40px_-6px_rgba(0,0,0,0.3)] ring-1 ring-white/40"
       >
         {/* reflet supérieur, touche « glass » */}
         <span className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
-        <span className="hidden items-center gap-2 pr-1 text-xs font-medium text-muted-foreground sm:flex">
+        {/* Statut — desktop uniquement */}
+        <span className="hidden items-center gap-2 pr-1 text-xs font-medium text-neutral-600 sm:flex">
           <span className="size-1.5 rounded-full bg-emerald-500" />
           {isAdmin ? "Édition" : "Aperçu"}
         </span>
@@ -105,7 +116,7 @@ export function AdminToolbar() {
           <DropdownMenuTrigger asChild>
             <button
               aria-label="Menu du compte"
-              className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/20"
+              className="flex size-8 items-center justify-center rounded-full bg-neutral-900/10 text-xs font-semibold text-neutral-900 ring-1 ring-neutral-900/20 transition-colors hover:bg-neutral-900/20"
             >
               {initial}
             </button>

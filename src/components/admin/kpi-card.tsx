@@ -15,6 +15,7 @@ export function KpiCard({
   icon: Icon,
   invert = false,
   hint,
+  sub,
 }: {
   label: string;
   value: string;
@@ -23,6 +24,8 @@ export function KpiCard({
   icon: LucideIcon;
   invert?: boolean;
   hint?: string;
+  /** Ligne de contexte sous la tendance (ex. « Auj. 12 · 7 j 48 · 30 j 130 »). */
+  sub?: React.ReactNode;
 }) {
   const hasPrev = previous > 0;
   const deltaPct = hasPrev ? ((current - previous) / previous) * 100 : null;
@@ -67,6 +70,11 @@ export function KpiCard({
             </>
           )}
         </div>
+        {sub && (
+          <div className="border-t border-border pt-2 text-xs text-muted-foreground">
+            {sub}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

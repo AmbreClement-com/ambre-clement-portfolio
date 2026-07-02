@@ -1,6 +1,6 @@
-import { and, gte, lt, isNotNull, desc, sql } from "drizzle-orm";
+import { and, gte, lt, eq, isNotNull, desc, sql, inArray } from "drizzle-orm";
 import { db } from "@/server/db";
-import { visits, projects, photos, categories } from "@/server/db/schema";
+import { visits, events, projects } from "@/server/db/schema";
 
 const DAY = 86_400_000;
 
@@ -74,6 +74,18 @@ function hostOf(ref: string | null): string {
   }
 }
 
+/** Nom lisible d'une source de trafic (regroupe les hôtes d'une même plateforme). */
+function sourceLabel(host: string): string {
+  if (/(^|\.)instagram\.com$/.test(host)) return "Instagram";
+  if (/(^|\.)(google\.[a-z.]+)$/.test(host)) return "Google";
+  if (/(^|\.)(linkedin\.com|lnkd\.in)$/.test(host)) return "LinkedIn";
+  if (/(^|\.)(facebook\.com|fb\.com|m\.facebook\.com)$/.test(host)) return "Facebook";
+  if (/(^|\.)pinterest\.[a-z.]+$/.test(host)) return "Pinterest";
+  if (/(^|\.)(t\.co|twitter\.com|x\.com)$/.test(host)) return "X (Twitter)";
+  if (/(^|\.)bing\.com$/.test(host)) return "Bing";
+  return host;
+}
+
 export async function getAnalytics(rangeDays: number) {
   const range: AnalyticsRange = (
     ANALYTICS_RANGES as readonly number[]
@@ -105,10 +117,12 @@ export async function getAnalytics(rangeDays: number) {
     daily,
     topPages,
     refRows,
-    hourRows,
-    proj,
-    ph,
-    cat,
+    recentRow,
+    clickRows,
+    vitalRows,
+    errAgg,
+    errRecent,
+    topProjRows,
   ] = await Promise.all([
     windowAgg(start, now),
     windowAgg(prevStart, start),
@@ -124,6 +138,7 @@ export async function getAnalytics(rangeDays: number) {
       .from(visits)
       .where(gte(visits.createdAt, start))
       .groupBy(sql`date_trunc('day', ${visits.createdAt})`),
+    // Pages du SITE (hors fiches projet → carte « Projets » dédiée, complémentaire).
     db
       .select({
         path: visits.path,
@@ -131,34 +146,100 @@ export async function getAnalytics(rangeDays: number) {
         avgDuration: sql<number>`coalesce(round(avg(${visits.durationMs}) filter (where ${visits.durationMs} > 0)), 0)::int`,
       })
       .from(visits)
-      .where(gte(visits.createdAt, start))
+      .where(
+        and(gte(visits.createdAt, start), sql`${visits.path} not like '/projects/%'`),
+      )
       .groupBy(visits.path)
       .orderBy(desc(sql`count(*)`))
-      .limit(8),
+      .limit(7),
     db
       .select({ referrer: visits.referrer, c: sql<number>`count(*)::int` })
       .from(visits)
       .where(and(gte(visits.createdAt, start), isNotNull(visits.referrer)))
       .groupBy(visits.referrer),
+    // Visiteurs uniques aujourd'hui / 7 j / 30 j — INDÉPENDANT du range sélectionné.
     db
       .select({
-        h: sql<number>`extract(hour from (${visits.createdAt} at time zone 'UTC' at time zone 'Europe/Paris'))::int`,
-        c: sql<number>`count(*)::int`,
+        today: sql<number>`count(distinct ${visits.visitorId}) filter (where ${visits.createdAt} >= ${startOfDay(0)})::int`,
+        viewsToday: sql<number>`count(*) filter (where ${visits.createdAt} >= ${startOfDay(0)})::int`,
+        week: sql<number>`count(distinct ${visits.visitorId}) filter (where ${visits.createdAt} >= ${startOfDay(6)})::int`,
+        month: sql<number>`count(distinct ${visits.visitorId})::int`,
       })
       .from(visits)
-      .where(gte(visits.createdAt, start))
-      .groupBy(
-        sql`extract(hour from (${visits.createdAt} at time zone 'UTC' at time zone 'Europe/Paris'))`,
-      ),
+      .where(gte(visits.createdAt, startOfDay(29))),
+    // Clics sur les liens importants — période courante + précédente (delta).
     db
       .select({
-        total: sql<number>`count(*)::int`,
-        published: sql<number>`count(*) filter (where ${projects.published})::int`,
+        name: events.name,
+        count: sql<number>`count(*) filter (where ${events.createdAt} >= ${start})::int`,
+        prevCount: sql<number>`count(*) filter (where ${events.createdAt} < ${start})::int`,
       })
-      .from(projects),
-    db.select({ total: sql<number>`count(*)::int` }).from(photos),
-    db.select({ total: sql<number>`count(*)::int` }).from(categories),
+      .from(events)
+      .where(
+        and(
+          gte(events.createdAt, prevStart),
+          sql`${events.name} not like 'vital:%'`,
+          sql`${events.name} <> 'client_error'`,
+        ),
+      )
+      .groupBy(events.name)
+      .orderBy(desc(sql`count(*) filter (where ${events.createdAt} >= ${start})`)),
+    // Web Vitals : p75 par métrique sur la période (le standard de mesure terrain).
+    db
+      .select({
+        name: events.name,
+        p75: sql<number>`percentile_cont(0.75) within group (order by ${events.value})`,
+      })
+      .from(events)
+      .where(
+        and(
+          gte(events.createdAt, start),
+          sql`${events.name} like 'vital:%'`,
+          isNotNull(events.value),
+        ),
+      )
+      .groupBy(events.name),
+    // Erreurs JS : volume sur la période + sessions touchées.
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+        sessions: sql<number>`count(distinct ${events.sessionId})::int`,
+      })
+      .from(events)
+      .where(and(gte(events.createdAt, start), eq(events.name, "client_error"))),
+    db
+      .select({ meta: events.meta, path: events.path, at: events.createdAt })
+      .from(events)
+      .where(and(gte(events.createdAt, start), eq(events.name, "client_error")))
+      .orderBy(desc(events.createdAt))
+      .limit(5),
+    // Projets les plus consultés (fiches /projects/slug).
+    db
+      .select({
+        path: visits.path,
+        views: sql<number>`count(*)::int`,
+        avgDuration: sql<number>`coalesce(round(avg(${visits.durationMs}) filter (where ${visits.durationMs} > 0)), 0)::int`,
+      })
+      .from(visits)
+      .where(
+        and(gte(visits.createdAt, start), sql`${visits.path} like '/projects/%'`),
+      )
+      .groupBy(visits.path)
+      .orderBy(desc(sql`count(*)`))
+      .limit(7),
   ]);
+
+  // Titres des projets consultés (slug → titre réel).
+  const projSlugs = topProjRows
+    .map((r) => r.path.split("/")[2] ?? "")
+    .filter(Boolean);
+  const titleRows = projSlugs.length
+    ? await db
+        .select({ slug: projects.slug, title: projects.title })
+        .from(projects)
+        .where(inArray(projects.slug, projSlugs))
+    : [];
+  const titleBySlug = new Map(titleRows.map((t) => [t.slug, t.title]));
 
   // Série quotidienne complète (jours vides à 0).
   const map = new Map(daily.map((d) => [d.day, d]));
@@ -173,12 +254,14 @@ export async function getAnalytics(rangeDays: number) {
     });
   }
 
-  // Sources de trafic : externes par domaine, le reste en « Direct / interne ».
+  // Sources de trafic : plateformes regroupées (Instagram, Google…), reste en
+  // « Direct / interne ».
   const extern = new Map<string, number>();
   for (const r of refRows) {
     const h = hostOf(r.referrer);
     if (!h || h === siteHost) continue; // interne ou illisible → direct
-    extern.set(h, (extern.get(h) ?? 0) + Number(r.c));
+    const label = sourceLabel(h);
+    extern.set(label, (extern.get(label) ?? 0) + Number(r.c));
   }
   const referredExternal = [...extern.values()].reduce((a, b) => a + b, 0);
   const sources = [
@@ -189,15 +272,13 @@ export async function getAnalytics(rangeDays: number) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
-  // Activité par heure (0–23, heure de Paris).
-  const hours = Array.from({ length: 24 }, () => 0);
-  for (const r of hourRows) {
-    const h = Number(r.h);
-    if (h >= 0 && h < 24) hours[h] = Number(r.c);
-  }
-
-  const projectsTotal = Number(proj[0]?.total ?? 0);
-  const published = Number(proj[0]?.published ?? 0);
+  // Web Vitals p75 (null si aucune mesure encore collectée).
+  const vitalBy = new Map(vitalRows.map((v) => [v.name, Number(v.p75)]));
+  const vitals = {
+    lcp: vitalBy.get("vital:LCP") ?? null,
+    cls: vitalBy.get("vital:CLS") ?? null,
+    inp: vitalBy.get("vital:INP") ?? null,
+  };
 
   return {
     range,
@@ -223,13 +304,37 @@ export async function getAnalytics(rangeDays: number) {
       views: Number(t.views),
       avgDuration: Number(t.avgDuration),
     })),
+    topProjects: topProjRows.map((t) => {
+      const slug = t.path.split("/")[2] ?? "";
+      return {
+        path: t.path,
+        title: titleBySlug.get(slug) ?? slug.replace(/-/g, " "),
+        views: Number(t.views),
+        avgDuration: Number(t.avgDuration),
+      };
+    }),
     sources,
-    hours,
-    content: {
-      published,
-      drafts: projectsTotal - published,
-      photos: Number(ph[0]?.total ?? 0),
-      categories: Number(cat[0]?.total ?? 0),
+    // Visiteurs uniques récents — indépendants du range sélectionné.
+    recent: {
+      today: Number(recentRow[0]?.today ?? 0),
+      viewsToday: Number(recentRow[0]?.viewsToday ?? 0),
+      week: Number(recentRow[0]?.week ?? 0),
+      month: Number(recentRow[0]?.month ?? 0),
+    },
+    clicks: clickRows.map((c) => ({
+      name: c.name,
+      count: Number(c.count),
+      prevCount: Number(c.prevCount),
+    })),
+    vitals,
+    errors: {
+      count: Number(errAgg[0]?.count ?? 0),
+      sessions: Number(errAgg[0]?.sessions ?? 0),
+      recent: errRecent.map((e) => ({
+        message: e.meta ?? "Erreur inconnue",
+        path: e.path,
+        at: e.at,
+      })),
     },
   };
 }

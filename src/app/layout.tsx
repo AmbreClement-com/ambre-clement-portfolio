@@ -17,23 +17,29 @@ const mono = Space_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
-  description: SITE_DEFAULT_DESCRIPTION,
-  applicationName: SITE_NAME,
-  // PWA iOS : ouverture en mode « application » (plein écran, sans barre Safari) une fois
-  // ajouté à l'écran d'accueil. Barre d'état « default » (texte foncé) = lisible sur le
-  // fond blanc du site. Le <link rel="manifest"> est ajouté automatiquement (app/manifest).
-  appleWebApp: {
-    capable: true,
-    title: SITE_NAME,
-    statusBarStyle: "default",
-  },
-  // Legacy iOS (Next 16 n'émet que le `mobile-web-app-capable` standard) : on ajoute la
-  // variante `apple-…` pour que les iPhone/iPad plus anciens ouvrent aussi en standalone.
-  other: { "apple-mobile-web-app-capable": "yes" },
-};
+// Metadata DYNAMIQUES : le nom du site est réglable dans l'admin (carte « Site »).
+export async function generateMetadata(): Promise<Metadata> {
+  const { getSettings } = await import("@/server/db/queries/projects");
+  const settings = await getSettings().catch(() => null);
+  const name = settings?.siteName?.trim() || SITE_NAME;
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: { default: name, template: `%s — ${name}` },
+    description: SITE_DEFAULT_DESCRIPTION,
+    applicationName: name,
+    // PWA iOS : ouverture en mode « application » (plein écran, sans barre Safari) une fois
+    // ajouté à l'écran d'accueil. Barre d'état « default » (texte foncé) = lisible sur le
+    // fond blanc du site. Le <link rel="manifest"> est ajouté automatiquement (app/manifest).
+    appleWebApp: {
+      capable: true,
+      title: name,
+      statusBarStyle: "default",
+    },
+    // Legacy iOS (Next 16 n'émet que le `mobile-web-app-capable` standard) : on ajoute la
+    // variante `apple-…` pour que les iPhone/iPad plus anciens ouvrent aussi en standalone.
+    other: { "apple-mobile-web-app-capable": "yes" },
+  };
+}
 
 // Indispensable au responsive mobile : sans `width=device-width`, les navigateurs
 // mobiles rendent la page en largeur desktop puis la dézooment. `viewport-fit: cover`

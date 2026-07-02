@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { MIN_ZOOM } from "@/lib/page-zoom";
 
-const LOGO = "Ambre Clément".toUpperCase();
 const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$*<>?/+=-§¤";
 const rnd = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
 
@@ -69,12 +68,16 @@ type Phase = "pending" | "play" | "done";
 export function IntroOverlay({
   enabled = true,
   speed = 1,
+  siteName = "Ambre Clément",
 }: {
   /** Activé dans les réglages animations (sinon le site s'affiche directement). */
   enabled?: boolean;
   /** Facteur `timeScale` (réglage vitesse du loader). >1 = plus rapide. */
   speed?: number;
+  /** Nom du site (réglable dans l'admin) — le titre qui s'écrit au démarrage. */
+  siteName?: string;
 }) {
+  const LOGO = siteName.toUpperCase();
   const [phase, setPhase] = useState<Phase>("pending");
   const rootRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -265,7 +268,7 @@ export function IntroOverlay({
       tl.kill();
       frameClone?.remove();
     };
-  }, [phase, speed]);
+  }, [phase, speed, LOGO]);
 
   if (phase === "done") return null;
   return (

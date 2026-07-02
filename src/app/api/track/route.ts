@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 /** Noms d'événements acceptés (whitelist stricte — évite toute pollution de la table). */
 const EVENT_OK =
-  /^(social:[a-z0-9_-]{1,32}|email_copy|contact_email|vital:(LCP|CLS|INP)|client_error)$/;
+  /^(social:[a-z0-9_-]{1,32}|email_copy|contact_email|contact_phone|vital:(LCP|CLS|INP)|client_error)$/;
 
 /**
  * Collecte de visites anonymes (aucune donnée personnelle, pas d'IP).

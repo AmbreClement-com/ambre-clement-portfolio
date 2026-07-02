@@ -7,7 +7,7 @@ import gsap from "gsap";
 import { useFrameMeta, type FrameMetaData } from "@/components/public/frame-context";
 import { SOCIAL_ICONS } from "@/lib/socials";
 import { isSocialPlatform, SOCIAL_META } from "@/lib/social-platforms";
-import { SITE_URL } from "@/lib/seo";
+import { siteDomain } from "@/lib/seo";
 import { pageZoom, MIN_ZOOM } from "@/lib/page-zoom";
 import { getProjectSpeed } from "@/components/public/project-transition";
 import type { SocialLink } from "@/server/db/schema";
@@ -184,14 +184,6 @@ function HudInner({
   );
 }
 
-function domain() {
-  try {
-    const h = new URL(SITE_URL).host.replace(/^www\./, "");
-    return h.includes("localhost") ? "ambreclement.com" : h;
-  } catch {
-    return "ambreclement.com";
-  }
-}
 
 
 /**
@@ -206,10 +198,13 @@ export function SiteFrame({
   socials,
   email,
   speed,
+  domainLabel = null,
 }: {
   socials: SocialLink[];
   email: string | null;
   speed: number;
+  /** Domaine affiché dans le © bas-gauche (réglable dans l'admin). NULL → SITE_URL. */
+  domainLabel?: string | null;
 }) {
   const ctx = useFrameMeta();
   const meta = ctx?.meta ?? null;
@@ -576,7 +571,15 @@ export function SiteFrame({
       const refresh = () => {
         mainNodes = mainText();
         frameNodes = frameText();
-        const fresh = [...mainNodes, ...frameNodes].filter((f) => !wrapped.has(f));
+        // Contact (manuscrit) : le CONTENU part de VIDE et s'écrit en grandissant. Il ne
+        // faut PAS le nowrap : mesuré vide il passe pour mono-ligne, et tout le
+        // paragraphe s'écrirait sur UNE seule ligne (débordement) au lieu de se
+        // répartir naturellement vers sa disposition finale. Le cadre, lui, reste
+        // brouillé à longueur constante → nowrap sûr.
+        const soft = pathRef.current === "/contact";
+        const fresh = (soft ? frameNodes : [...mainNodes, ...frameNodes]).filter(
+          (f) => !wrapped.has(f),
+        );
         if (fresh.length) {
           setNowrap(fresh, true);
           fresh.forEach((f) => wrapped.add(f));
@@ -613,7 +616,9 @@ export function SiteFrame({
             hadHud && hudRef.current ? collectTextNodes(hudRef.current) : [];
           const fx = [...mainNodes, ...frameNodes, ...hudNodes];
           if (!fx.length) return;
-          setNowrap(fx, true);
+          // Contact (manuscrit) : pas de nowrap sur le contenu (cf. boucle d'entrée) —
+          // le texte s'écrit en se répartissant vers sa disposition finale.
+          setNowrap(soft ? [...frameNodes, ...hudNodes] : fx, true);
           const p = { d: 0 };
           gsap.to(p, {
             d: 1,
@@ -893,7 +898,7 @@ export function SiteFrame({
           la nav centrale. */}
       <div className="absolute bottom-4 left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
         <span>
-          ©{year}&nbsp;{domain()}
+          ©{year}&nbsp;{domainLabel || siteDomain()}
         </span>
       </div>
 

@@ -58,7 +58,7 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
       <div className="md:hidden">
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0 flex-1">
-            <h2 className="text-[2rem] font-light uppercase leading-[1.05] tracking-wide text-neutral-900">
+            <h2 className="text-2xl font-light uppercase leading-[1.05] tracking-wide text-neutral-900">
               {p.title}
             </h2>
             {p.subtitle && (
@@ -396,7 +396,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
               ref={(el) => {
                 layerRefs.current[i] = el;
               }}
-              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-32 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-24 md:py-0"
+              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-32 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-16 md:py-0 lg:px-24"
               style={{ opacity: i === 0 ? 1 : 0 }}
             >
               {/* MOBILE : le CONTENU de la slide scrolle en INTERNE (un tarif long n'est
@@ -410,8 +410,9 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           ))}
         </div>
 
-        {/* Bande de vignettes (gauche) */}
-        <div className="pointer-events-none absolute left-0 top-0 hidden h-screen w-40 overflow-hidden md:block">
+        {/* Bande de vignettes (gauche) — lg+ uniquement : entre 768 et 1024px elle
+            chevauchait la photo (contenu en px-16/24) → bande du bas à la place. */}
+        <div className="pointer-events-none absolute left-0 top-0 hidden h-screen w-40 overflow-hidden lg:block">
           <div ref={stripRef} className="absolute left-16 will-change-transform">
             {pricings.map((p, i) => (
               <button
@@ -443,7 +444,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
         {/* Bande de vignettes horizontale (mobile) — navigation entre tarifs. Relevée
             AU-DESSUS des repères de coin du cadre (bottom-12 + size-4 → jusqu'à 64px) :
             elle se pose ainsi clairement À L'INTÉRIEUR du cadre. */}
-        <div className="absolute inset-x-0 bottom-20 flex justify-center px-4 md:hidden">
+        <div className="absolute inset-x-0 bottom-20 flex justify-center px-4 md:bottom-12 lg:hidden">
           <div className="flex max-w-[92vw] gap-1.5 overflow-x-auto pb-1">
             {pricings.map((p, i) => (
               <button

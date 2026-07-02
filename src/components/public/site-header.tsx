@@ -18,7 +18,6 @@ const RADIUS = 28; // = rounded-[1.75rem]
 // est géré dans run()/reveal() via coverRef → 100 % opaque garanti au palier.
 
 // --- Décryptage (scramble) du titre -----------------------------------------
-const LOGO = "Ambre Clément".toUpperCase();
 const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$*<>?/+=-§¤";
 const rnd = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
 /**
@@ -76,12 +75,17 @@ export function SiteHeader({
   pricingNav = null,
   transitionsEnabled,
   speed,
+  siteName = "Ambre Clément",
 }: {
   categories: NavCategory[];
   pricingNav?: { href: string; label: string } | null;
   transitionsEnabled: boolean;
   speed: number;
+  /** Nom du site (réglable dans l'admin) : logo de la barre + Matrix du titre. */
+  siteName?: string;
 }) {
+  // Stable au runtime (ne change qu'au déploiement d'un nouveau réglage).
+  const LOGO = siteName.toUpperCase();
   const router = useRouter();
   const ctx = useFrameMeta(); // meta de la page courante (dont `activeHref` éventuel)
   // facteur de vitesse (timeScale GSAP) accessible dans run/reveal (callbacks).
@@ -156,11 +160,14 @@ export function SiteHeader({
     if (pricingNav) map[pricingNav.href] = pricingNav.label;
     routesRef.current = map;
   }, [categories, pricingNav]);
-  const labelFor = (p: string) => {
-    if (routesRef.current[p]) return routesRef.current[p];
-    const seg = p.split("/").filter(Boolean).pop() ?? "";
-    return seg ? seg.replace(/-/g, " ") : "Ambre Clément";
-  };
+  const labelFor = useCallback(
+    (p: string) => {
+      if (routesRef.current[p]) return routesRef.current[p];
+      const seg = p.split("/").filter(Boolean).pop() ?? "";
+      return seg ? seg.replace(/-/g, " ") : siteName;
+    },
+    [siteName],
+  );
 
   const animating = useRef(false);
   const awaiting = useRef(false);
@@ -274,7 +281,7 @@ export function SiteHeader({
     // la barre (verre) reprend la main : le vrai logo réapparaît à gauche — fondu
     // plus long et chevauchant le titre pour un atterrissage doux (pas de claquement).
     if (bar) tl.to(bar, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 2.55);
-  }, []);
+  }, [LOGO]);
 
   // SORTIE : centrage du logo, puis la pilule se déplie (LARGEUR puis HAUTEUR).
   const run = useCallback(
@@ -423,7 +430,7 @@ export function SiteHeader({
       tl.call(() => router.push(href), undefined, 1.92);
       safety.current = window.setTimeout(() => reveal(), 3000 / speedRef.current);
     },
-    [router, reveal],
+    [router, reveal, LOGO, labelFor],
   );
 
   // Repli déclenché quand la nouvelle page est montée.
@@ -498,7 +505,7 @@ export function SiteHeader({
     };
     window.addEventListener("ac:intro-return", onIntroReturn);
     return () => window.removeEventListener("ac:intro-return", onIntroReturn);
-  }, [reveal]);
+  }, [reveal, LOGO]);
 
   // Fermeture au clic EN DEHORS de la pilule (utile surtout sur tactile, où il n'y a pas
   // de `mouseleave` pour refermer). Sur souris, le `mouseleave` s'en charge déjà.
@@ -592,6 +599,15 @@ export function SiteHeader({
         ref={pillRef}
         onMouseEnter={canHover ? () => setOpen(true) : undefined}
         onMouseLeave={canHover ? () => setOpen(false) : undefined}
+        // Tap N'IMPORTE OÙ sur la pilule → OUVRE le menu (pratique au doigt). Les liens
+        // du menu naviguent normalement et les boutons logo/points gardent leur bascule
+        // (fermer reste possible) ; clic ignoré pendant une transition de page.
+        onClick={(e) => {
+          if (animating.current) return;
+          const t = e.target as HTMLElement;
+          if (t.closest("a") || t.closest("[data-nav-toggle]")) return;
+          setOpen(true);
+        }}
         className={cn(
           "glass-refract pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[1.75rem] transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
           dark
@@ -644,16 +660,18 @@ export function SiteHeader({
           <button
             type="button"
             ref={logoRef}
+            data-nav-toggle
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
             className="cursor-pointer text-sm font-semibold uppercase tracking-[0.18em]"
           >
-            Ambre Clément
+            {siteName}
           </button>
           <button
             type="button"
             ref={dotsRef}
+            data-nav-toggle
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={open}
             onClick={() => setOpen((o) => !o)}

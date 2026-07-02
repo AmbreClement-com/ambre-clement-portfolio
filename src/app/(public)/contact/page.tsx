@@ -19,6 +19,8 @@ export default async function ContactPage() {
   const email = settings?.email ?? "contact@ambreclement.com";
   const title = settings?.contactTitle || "Donnons vie à vos images";
   const text = settings?.contactText;
+  const phone = settings?.contactPhone ?? null;
+  const location = settings?.contactLocation ?? null;
   const image = settings?.contactImage ?? null;
   const anims = resolveAnimations(settings?.animations);
 
@@ -76,6 +78,26 @@ export default async function ContactPage() {
             ↗
           </span>
         </a>
+
+        {/* Téléphone + lieu (réglés dans l'onglet Contact de l'admin ; masqués si vides).
+            Même grammaire mono/uppercase que le cadre. */}
+        {(phone || location) && (
+          <div
+            className="c-rise mt-6 flex flex-wrap items-baseline gap-x-8 gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-white/70"
+            style={{ animationDelay: "0.62s" }}
+          >
+            {phone && (
+              <a
+                href={`tel:${phone.replace(/[^+\d]/g, "")}`}
+                data-track="contact_phone"
+                className="transition-colors hover:text-white"
+              >
+                {phone}
+              </a>
+            )}
+            {location && <span>{location}</span>}
+          </div>
+        )}
       </div>
 
       {/* Curseur fluide (WebGL) — fumée BLANCHE en mix-blend-difference → INVERSE

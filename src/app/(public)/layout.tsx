@@ -42,6 +42,8 @@ export default async function PublicLayout({
   const anims = resolveAnimations(settings?.animations);
   const transitionSpeed = TRANSITION_SPEED_FACTOR[anims.pageTransitionSpeed];
   const loaderSpeed = TRANSITION_SPEED_FACTOR[anims.loaderSpeed];
+  // Nom du site (réglable dans l'admin, carte « Site ») → navbar + loader.
+  const siteName = settings?.siteName?.trim() || "Ambre Clément";
 
   // Onglet « Tarifs » : visible dans la navbar dès qu'au moins un tarif est publié.
   const pricingNav =
@@ -56,6 +58,7 @@ export default async function PublicLayout({
         pricingNav={pricingNav}
         transitionsEnabled={anims.pageTransitionEnabled}
         speed={transitionSpeed}
+        siteName={siteName}
       />
       <main className="flex-1">{children}</main>
       {/* Cadre global statique (remplace le footer) — nom de page, compteur,
@@ -64,12 +67,17 @@ export default async function PublicLayout({
         socials={socials}
         email={settings?.email ?? null}
         speed={transitionSpeed}
+        domainLabel={settings?.frameDomain?.trim() || null}
       />
       {/* Le curseur fluide n'existe QUE sur /contact (voir contact/page.tsx). */}
       {/* Visible uniquement si connecté — la session est lue côté client */}
       <AdminToolbar />
       <Analytics />
-      <IntroOverlay enabled={anims.loaderEnabled} speed={loaderSpeed} />
+      <IntroOverlay
+        enabled={anims.loaderEnabled}
+        speed={loaderSpeed}
+        siteName={siteName}
+      />
     </FrameProvider>
   );
 }

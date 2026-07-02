@@ -7,6 +7,16 @@ export const SITE_NAME = "Ambre Clément";
 export const SITE_DEFAULT_DESCRIPTION =
   "Portfolio photographique d'Ambre Clément — portraits, maternité et projets.";
 
+/** Domaine « propre » du site (sans www) — le repli du © du cadre. */
+export function siteDomain(): string {
+  try {
+    const h = new URL(SITE_URL).host.replace(/^www\./, "");
+    return h.includes("localhost") ? "ambreclement.com" : h;
+  } catch {
+    return "ambreclement.com";
+  }
+}
+
 type BuildMetaInput = {
   title?: string;
   description?: string;

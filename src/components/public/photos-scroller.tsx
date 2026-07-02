@@ -124,13 +124,21 @@ export function PhotosScroller({
   // Colonnes MAX selon la largeur (4 desktop / 2 mobile). Défaut 4 = sûr en SSR.
   const [maxCols, setMaxCols] = useState(4);
   const [webglOn, setWebglOn] = useState(false);
+  // WebGL réservé au desktop (≥1024). Sur mobile/tablette, chaque photo devient une
+  // texture GPU NON compressée (≈34 Mo pour une 2400px) et curtains ignore le srcset →
+  // il charge la plus grande variante. Avec 2 périodes de boucle, la mémoire GPU sature
+  // et Safari mobile crashe. On y sert donc les <picture> responsives natifs (petites
+  // variantes choisies par le srcset + lazy-load natif), sans aucune texture GPU.
+  const [webglEnabled, setWebglEnabled] = useState(false);
   const reduced = usePrefersReducedMotion();
 
   // Petite galerie (≤ 8 photos) : pas de scroll infini (trop peu d'images pour une
   // boucle crédible) → affichage statique « intelligent », centré dans le viewport
   // (cf. perRow + le conteneur centré au rendu).
   const smallGallery = photos.length <= 8;
-  const infiniteActive = infiniteEnabled && !smallGallery;
+  // Le scroll infini repose sur curtains + Lenis (boucle onRender) → uniquement quand le
+  // WebGL est actif (desktop). Sur mobile/tablette : scroll natif fini, photos une seule fois.
+  const infiniteActive = infiniteEnabled && !smallGallery && webglEnabled;
   // Colonnes effectives = min(nb photos, colonnes max). DÉRIVÉ AU RENDU (et non un state
   // posé par un effet) → correct dès le 1er rendu. Crucial : `finishReveal` (ouverture
   // projet) mesure la 1re photo en `useLayoutEffect` ; avec un perRow tardif elle mesurait
@@ -151,10 +159,11 @@ export function PhotosScroller({
     const wide = window.matchMedia("(min-width: 1024px)");
     const tablet = window.matchMedia("(min-width: 768px)");
     const phone = window.matchMedia("(max-width: 479px)");
-    const apply = () =>
-      setMaxCols(
-        wide.matches ? 4 : tablet.matches ? 3 : phone.matches ? 1 : 2,
-      );
+    const apply = () => {
+      setMaxCols(wide.matches ? 4 : tablet.matches ? 3 : phone.matches ? 1 : 2);
+      // WebGL desktop uniquement (cf. `webglEnabled`) : évite la saturation mémoire GPU.
+      setWebglEnabled(wide.matches);
+    };
     apply();
     const mqs = [wide, tablet, phone];
     mqs.forEach((mq) => mq.addEventListener("change", apply));
@@ -215,7 +224,7 @@ export function PhotosScroller({
 
   // WebGL (curtains.js) + scroll infini (boucle transparente)
   useEffect(() => {
-    if (reduced || photos.length === 0) return;
+    if (reduced || photos.length === 0 || !webglEnabled) return;
     let cancelled = false;
     let cleanup: (() => void) | undefined;
 
@@ -373,6 +382,7 @@ export function PhotosScroller({
     scrollEnabled,
     scrollIntensity,
     infiniteActive,
+    webglEnabled,
   ]);
 
   useEffect(() => {

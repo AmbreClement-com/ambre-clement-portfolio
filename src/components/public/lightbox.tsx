@@ -118,13 +118,22 @@ export function Lightbox({
           <source
             type="image/avif"
             srcSet={current.variants.avif.map((v) => `${v.url} ${v.width}w`).join(", ")}
+            sizes="92vw"
           />
           <source
             type="image/webp"
             srcSet={current.variants.webp.map((v) => `${v.url} ${v.width}w`).join(", ")}
+            sizes="92vw"
           />
           <img
-            src={current.variants.webp.at(-1)?.url}
+            // Sans `sizes`, le navigateur suppose 100vw et charge la plus grande variante
+            // (≈8 Mo) même sur un petit écran → lag/crash mobile. `sizes="92vw"` (largeur
+            // réelle de la visionneuse) laisse le srcset choisir. Repli = variante moyenne
+            // (~1080px) et non la plus grande, au cas où le srcset ne s'applique pas.
+            src={
+              (current.variants.webp.find((v) => v.width >= 1080) ??
+                current.variants.webp.at(-1))?.url
+            }
             alt={current.altText}
             className="max-h-[80vh] w-auto object-contain"
           />

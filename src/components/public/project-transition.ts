@@ -432,6 +432,9 @@ export function finishReveal() {
         removeClone();
         revealActive = false;
         projectReveal.active = false; // la galerie reprend son clip normal
+        // Ouverture (mobile) terminée → même handoff que desktop : le HUD repasse dans le
+        // cadre (z-30, derrière la lightbox) et tout brouillage Matrix restant est figé.
+        window.dispatchEvent(new Event("ac:hud-release"));
       };
       const reveal = () => {
         canvas.style.clipPath = "";
@@ -535,6 +538,10 @@ export function finishReveal() {
         revealTl = null;
         revealActive = false;
         projectReveal.active = false; // révélation finie → la galerie reprend son clip
+        // Ouverture terminée → le cadre rend la main au HUD du CADRE (z-30) et fige tout
+        // brouillage Matrix restant. Sans ce signal, le HUD resterait sur le calque
+        // persistant (z-90, au-dessus de la lightbox) et parfois figé en Matrix.
+        window.dispatchEvent(new Event("ac:hud-release"));
       },
     });
     revealTl.timeScale(projectSpeed); // vitesse globale (synchro avec le cadre/SiteFrame)

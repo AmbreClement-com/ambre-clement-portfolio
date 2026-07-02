@@ -366,6 +366,30 @@ export function SiteFrame({
     ctl.raf = requestAnimationFrame(tick);
   };
 
+  // Fin d'une OUVERTURE de projet (project-transition → `ac:hud-release` ; aussi émis en
+  // fin de RETOUR par onEnter). Pendant la transition, le HUD projet est porté par le
+  // calque PERSISTANT (z-90, au-dessus de tout). À la fin, il doit :
+  //  (1) figer tout brouillage Matrix restant sur son vrai texte (course possible entre
+  //      startHudScramble et stopHudLoop → le HUD restait parfois bloqué en Matrix) ;
+  //  (2) rendre la main au HUD du CADRE (z-30), qui passe naturellement DERRIÈRE la
+  //      visionneuse (z-60) → une photo ouverte ne se fait plus recouvrir par le HUD.
+  useEffect(() => {
+    const onRelease = () => {
+      finishHudScramble(true); // stoppe la boucle de brouillage + résout
+      const el = hudRef.current; // filet : résout aussi si figé sans boucle active
+      if (el) {
+        const ns = collectTextNodes(el);
+        ns.forEach((n) => resolveNode(n));
+        setNowrap(ns, false);
+      }
+      setHudPersist(false); // le HUD du cadre (z-30) reprend le relais
+    };
+    window.addEventListener("ac:hud-release", onRelease);
+    return () => window.removeEventListener("ac:hud-release", onRelease);
+    // finishHudScramble ne touche que des refs + fonctions de module → closure stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Décodage Matrix du HUD ACTIF (calque persistant OU HUD du cadre — un seul est monté,
   // les deux portent `hudRef`), au changement de projet, une fois le nouveau contenu écrit.
   const projKey = meta?.projectInfo

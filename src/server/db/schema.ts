@@ -3,6 +3,7 @@ import {
   uuid,
   text,
   integer,
+  doublePrecision,
   boolean,
   timestamp,
   date,
@@ -194,6 +195,33 @@ export const visits = pgTable(
 );
 
 export type Visit = typeof visits.$inferSelect;
+
+/**
+ * Événements analytics (anonymes, mêmes ids que `visits`) — trois familles :
+ *  • interactions : clic sur un lien important (`social:instagram`, `email_copy`,
+ *    `contact_email`, …) — posées via `data-track` sur les liens/boutons ;
+ *  • `vital:LCP|CLS|INP` : Web Vitals (valeur dans `value`, ms ou score) ;
+ *  • `client_error` : erreur JS non interceptée (message tronqué dans `meta`).
+ */
+export const events = pgTable(
+  "events",
+  {
+    id: text("id").primaryKey(), // uuid généré côté client
+    name: text("name").notNull(),
+    path: text("path").notNull(),
+    visitorId: text("visitor_id"),
+    sessionId: text("session_id"),
+    value: doublePrecision("value"), // vitals uniquement (ms ou score CLS)
+    meta: text("meta"), // erreurs : message tronqué
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("events_created_at_idx").on(t.createdAt),
+    index("events_name_idx").on(t.name),
+  ],
+);
+
+export type AnalyticsEvent = typeof events.$inferSelect;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),

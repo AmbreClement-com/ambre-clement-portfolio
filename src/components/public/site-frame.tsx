@@ -979,6 +979,7 @@ export function SiteFrame({
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-track={`social:${s.platform}`}
                 aria-label={SOCIAL_META[s.platform as keyof typeof SOCIAL_META]?.label}
                 className="transition-opacity hover:opacity-60"
               >
@@ -1000,6 +1001,7 @@ export function SiteFrame({
         <button
           type="button"
           onClick={copyEmail}
+          data-track="email_copy"
           aria-label={`Copier l'adresse email ${email}`}
           className="pointer-events-auto absolute bottom-4 right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
         >

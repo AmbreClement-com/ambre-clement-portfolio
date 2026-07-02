@@ -65,6 +65,7 @@ export default async function ContactPage() {
         )}
         <a
           href={`mailto:${email}`}
+          data-track="contact_email"
           style={{ animationDelay: "0.5s" }}
           className="c-rise group mt-8 inline-flex max-w-full flex-wrap items-baseline gap-3 text-base font-light text-white sm:text-lg md:text-2xl"
         >

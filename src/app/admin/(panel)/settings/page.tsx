@@ -4,7 +4,9 @@ import { auth } from "@/server/auth";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { isThemeKey } from "@/lib/themes";
+import { SITE_NAME, siteDomain } from "@/lib/seo";
 import { SettingsForm } from "@/components/admin/settings-form";
+import { AnimationsForm } from "@/components/admin/animations-form";
 import { ProfileForm } from "@/components/admin/profile-form";
 import { ChangePasswordForm } from "@/components/admin/change-password-form";
 import { ThemePicker } from "@/components/admin/theme-picker";
@@ -16,8 +18,7 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import Link from "next/link";
-import { User, Palette, Globe, Lock, Users, Wrench, ChevronRight } from "lucide-react";
+import { User, Palette, Globe, Lock, Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -33,52 +34,12 @@ export default async function AdminSettingsPage() {
   ]);
   // Thème PROPRE À L'UTILISATEUR connecté (plus un réglage global).
   const theme = isThemeKey(me?.theme) ? me.theme : "default";
-  const isAdmin = session?.user?.role === "admin";
-  const isDev = process.env.NODE_ENV !== "production";
 
   return (
     <div className="grid gap-6">
       <PageHeader title="Réglages" description="Profil, apparence et informations du site." />
 
-      {/* Menus avancés (selon les droits) */}
-      {(isAdmin || isDev) && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {isAdmin && (
-            <Link
-              href="/admin/settings/users"
-              className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
-            >
-              <div className="flex items-center gap-3">
-                <Users className="size-5 text-primary" />
-                <div>
-                  <div className="font-medium">Utilisateurs</div>
-                  <div className="text-sm text-muted-foreground">
-                    Créer des comptes et gérer les droits.
-                  </div>
-                </div>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Link>
-          )}
-          {isAdmin && isDev && (
-            <Link
-              href="/admin/settings/dev"
-              className="flex items-center justify-between rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted"
-            >
-              <div className="flex items-center gap-3">
-                <Wrench className="size-5 text-primary" />
-                <div>
-                  <div className="font-medium">Développeur</div>
-                  <div className="text-sm text-muted-foreground">
-                    Outils locaux (base de données, contenu).
-                  </div>
-                </div>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Link>
-          )}
-        </div>
-      )}
+      {/* Utilisateurs & Développeur : accessibles depuis la sidebar (pas de doublon ici). */}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Gauche : Compte */}
@@ -128,7 +89,7 @@ export default async function AdminSettingsPage() {
         </Card>
       </div>
 
-      {/* Site */}
+      {/* Site : identité + mentions légales */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -136,11 +97,36 @@ export default async function AdminSettingsPage() {
             Site
           </CardTitle>
           <CardDescription>
-            Coordonnées et liens affichés sur le site public.
+            Identité du site (nom, domaine affiché) et mentions légales. Les
+            coordonnées et réseaux sociaux sont dans l&apos;onglet Contact.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <SettingsForm settings={settings} />
+          {/* Champs PRÉ-REMPLIS avec la valeur EFFECTIVE (celle que le site affiche
+              réellement, replis compris) — jamais un champ vide trompeur. */}
+          <SettingsForm
+            settings={{
+              siteName: settings?.siteName?.trim() || SITE_NAME,
+              frameDomain: settings?.frameDomain?.trim() || siteDomain(),
+              legalNotice: settings?.legalNotice ?? null,
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Animations : carte dédiée */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-4 text-primary" />
+            Animations
+          </CardTitle>
+          <CardDescription>
+            Effets visuels du site public : intensité, vitesses et aperçus.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AnimationsForm animations={settings?.animations} />
         </CardContent>
       </Card>
     </div>

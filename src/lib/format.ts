@@ -13,6 +13,19 @@ export function formatDuration(ms: number): string {
   return `${m} min ${rem.toString().padStart(2, "0")} s`;
 }
 
+/** Formate une taille en octets → « 12,4 Mo » / « 860 Ko ». */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`;
+  const units = ["Ko", "Mo", "Go"] as const;
+  let v = bytes / 1024;
+  let u = 0;
+  while (v >= 1024 && u < units.length - 1) {
+    v /= 1024;
+    u++;
+  }
+  return `${v >= 100 ? Math.round(v) : v.toFixed(1).replace(".", ",")} ${units[u]}`;
+}
+
 /** Assemble prénom + nom en un nom complet, ou `null` si les deux sont vides. */
 export function fullName(
   first?: string | null,

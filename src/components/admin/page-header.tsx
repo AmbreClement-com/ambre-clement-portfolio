@@ -21,7 +21,7 @@ export function PageHeader({
 }) {
   return (
     <div className="grid gap-3">
-      {backHref && <BackButton fallback={backHref} label={backLabel} />}
+      {backHref && <BackButton href={backHref} label={backLabel} />}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <div className="flex items-center gap-2.5">

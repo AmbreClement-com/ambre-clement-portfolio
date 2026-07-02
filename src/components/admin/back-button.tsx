@@ -1,28 +1,25 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-/** Bouton « Retour » : revient dans l'historique, sinon va sur `fallback`. */
+/**
+ * Bouton « Retour » : remonte la HIÉRARCHIE (page parente passée en `href`),
+ * jamais l'historique du navigateur — `router.back()` ramenait à la « dernière
+ * position » (parfois une tout autre section), déroutant dans un back-office.
+ */
 export function BackButton({
-  fallback = "/admin",
+  href = "/admin",
   label = "Retour",
 }: {
-  fallback?: string;
+  href?: string;
   label?: string;
 }) {
-  const router = useRouter();
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (window.history.length > 1) router.back();
-        else router.push(fallback);
-      }}
+    <Link
+      href={href}
       className="inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
       <ChevronLeft className="size-4" />
       {label}
-    </button>
+    </Link>
   );
 }

@@ -29,11 +29,13 @@ export const reorderInput = z.object({
   ids: z.array(z.string().uuid()).min(1),
 });
 
-export const settingsInput = z.object({
+/** Onglet Contact (admin) : coordonnées, réseaux sociaux + page publique /contact. */
+export const contactInput = z.object({
   email: z.string().email().optional().or(z.literal("")),
   contactTitle: z.string().max(200).optional(),
   contactText: z.string().max(2000).optional(),
-  legalNotice: z.string().max(10000).optional(),
+  contactPhone: z.string().max(30).optional(),
+  contactLocation: z.string().max(120).optional(),
   socials: z
     .array(
       z.object({
@@ -44,23 +46,32 @@ export const settingsInput = z.object({
     .max(20)
     .optional()
     .default([]),
-  animations: z
-    .object({
-      cursorEnabled: z.boolean(),
-      cursorIntensity: z.number().min(0).max(200),
-      photoHoverEnabled: z.boolean(),
-      photoHoverIntensity: z.number().min(0).max(200),
-      scrollWaveEnabled: z.boolean(),
-      scrollWaveIntensity: z.number().min(0).max(200),
-      infiniteScrollEnabled: z.boolean(),
-      pageTransitionEnabled: z.boolean(),
-      pageTransitionSpeed: z.enum(["slow", "medium", "fast"]),
-      loaderEnabled: z.boolean(),
-      loaderSpeed: z.enum(["slow", "medium", "fast"]),
-      projectTransitionEnabled: z.boolean(),
-      projectTransitionSpeed: z.enum(["slow", "medium", "fast"]),
-    })
-    .optional(),
+});
+
+/** Carte « Site » (admin) : identité du site + mentions légales. */
+export const settingsInput = z.object({
+  siteName: z.string().max(60).optional(),
+  frameDomain: z.string().max(100).optional(),
+  legalNotice: z.string().max(10000).optional(),
+});
+
+/** Carte « Animations » (admin) : on/off + intensité + vitesses par effet. */
+export const animationsInput = z.object({
+  animations: z.object({
+    cursorEnabled: z.boolean(),
+    cursorIntensity: z.number().min(0).max(200),
+    photoHoverEnabled: z.boolean(),
+    photoHoverIntensity: z.number().min(0).max(200),
+    scrollWaveEnabled: z.boolean(),
+    scrollWaveIntensity: z.number().min(0).max(200),
+    infiniteScrollEnabled: z.boolean(),
+    pageTransitionEnabled: z.boolean(),
+    pageTransitionSpeed: z.enum(["slow", "medium", "fast"]),
+    loaderEnabled: z.boolean(),
+    loaderSpeed: z.enum(["slow", "medium", "fast"]),
+    projectTransitionEnabled: z.boolean(),
+    projectTransitionSpeed: z.enum(["slow", "medium", "fast"]),
+  }),
 });
 
 /** Slugs réservés (routes fixes) — interdits pour les catégories. */

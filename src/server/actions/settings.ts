@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { siteSettings, users } from "@/server/db/schema";
-import { settingsInput } from "@/lib/validators";
+import { settingsInput, animationsInput, contactInput } from "@/lib/validators";
 import { isThemeKey } from "@/lib/themes";
 import { DEFAULT_ANIMATIONS } from "@/lib/animations";
 import { requireAdmin } from "./guard";
@@ -18,6 +18,7 @@ export async function updateTheme(theme: string) {
   revalidatePath("/admin", "layout");
 }
 
+/** Carte « Site » : identité (nom, domaine du cadre) + mentions légales. */
 export async function updateSettings(raw: unknown) {
   await requireAdmin();
 
@@ -28,10 +29,8 @@ export async function updateSettings(raw: unknown) {
     const issue = parsed.error.issues[0];
     const field = issue?.path[0];
     const labels: Record<string, string> = {
-      email: "L'adresse email",
-      socials: "Une URL de réseau social",
-      contactTitle: "Le titre",
-      contactText: "Le texte",
+      siteName: "Le nom du site",
+      frameDomain: "Le domaine affiché",
       legalNotice: "Les mentions légales",
     };
     const label =
@@ -40,34 +39,73 @@ export async function updateSettings(raw: unknown) {
   }
   const data = parsed.data;
 
-  const socials = data.socials ?? [];
-  const animations = data.animations ?? DEFAULT_ANIMATIONS;
+  const set = {
+    siteName: data.siteName?.trim() || null,
+    frameDomain: data.frameDomain?.trim() || null,
+    legalNotice: data.legalNotice || null,
+  };
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, ...set, defaultSeo: {} })
+    .onConflictDoUpdate({ target: siteSettings.id, set });
+
+  revalidatePath("/", "layout"); // navbar (nom) + cadre (domaine) + mentions
+}
+
+/** Carte « Animations » : on/off + intensité + vitesses par effet. */
+export async function updateAnimations(raw: unknown) {
+  await requireAdmin();
+
+  const parsed = animationsInput.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error("Un réglage d'animation est invalide. Réessayez.");
+  }
+  const animations = parsed.data.animations ?? DEFAULT_ANIMATIONS;
 
   await db
     .insert(siteSettings)
-    .values({
-      id: 1,
-      email: data.email || null,
-      contactTitle: data.contactTitle || null,
-      contactText: data.contactText || null,
-      legalNotice: data.legalNotice || null,
-      socials,
-      animations,
-      defaultSeo: {},
-    })
-    .onConflictDoUpdate({
-      target: siteSettings.id,
-      set: {
-        email: data.email || null,
-        contactTitle: data.contactTitle || null,
-        contactText: data.contactText || null,
-        legalNotice: data.legalNotice || null,
-        socials,
-        animations,
-      },
-    });
+    .values({ id: 1, animations, defaultSeo: {} })
+    .onConflictDoUpdate({ target: siteSettings.id, set: { animations } });
 
-  revalidatePath("/", "layout"); // cadre global + contact
+  revalidatePath("/", "layout");
+}
+
+/** Onglet Contact : coordonnées, réseaux sociaux + contenu de la page /contact. */
+export async function updateContact(raw: unknown) {
+  await requireAdmin();
+
+  const parsed = contactInput.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const field = issue?.path[0];
+    const labels: Record<string, string> = {
+      email: "L'adresse email",
+      contactTitle: "Le titre",
+      contactText: "Le texte",
+      contactPhone: "Le numéro de téléphone",
+      contactLocation: "Le lieu",
+      socials: "Une URL de réseau social",
+    };
+    const label =
+      typeof field === "string" ? (labels[field] ?? "Un champ") : "Un champ";
+    throw new Error(`${label} est invalide. Vérifiez le format.`);
+  }
+  const data = parsed.data;
+
+  const set = {
+    email: data.email || null,
+    contactTitle: data.contactTitle || null,
+    contactText: data.contactText || null,
+    contactPhone: data.contactPhone || null,
+    contactLocation: data.contactLocation || null,
+    socials: data.socials ?? [],
+  };
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, ...set, defaultSeo: {} })
+    .onConflictDoUpdate({ target: siteSettings.id, set });
+
+  revalidatePath("/", "layout"); // cadre global (email + réseaux) + page contact
 }
 
 /** Retire l'image de la page Contact. */

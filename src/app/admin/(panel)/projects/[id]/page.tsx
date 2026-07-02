@@ -27,7 +27,7 @@ export default async function EditProjectPage({
     <div className="grid gap-6">
       <PageHeader
         title={project.title}
-        backHref="/admin/categories"
+        backHref={project.categoryId ? `/admin/categories/${project.categoryId}` : "/admin/categories"}
         actions={
           project.published && (
             <Button asChild variant="outline" size="sm">

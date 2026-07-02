@@ -153,9 +153,15 @@ export const siteSettings = pgTable("site_settings", {
   id: integer("id").primaryKey().default(1), // singleton
   instagramUrl: text("instagram_url"), // legacy — repris dans `socials`
   linkedinUrl: text("linkedin_url"), // legacy — repris dans `socials`
+  // Nom du site (navbar, loader, titres d'onglet, manifest). NULL → « Ambre Clément ».
+  siteName: text("site_name"),
+  // Domaine affiché dans le cadre (© 2026 xxx). NULL → dérivé de SITE_URL.
+  frameDomain: text("frame_domain"),
   email: text("email"),
   contactTitle: text("contact_title"),
   contactText: text("contact_text"),
+  contactPhone: text("contact_phone"),
+  contactLocation: text("contact_location"), // ex. « Nantes, France »
   contactImage: jsonb("contact_image").$type<StoredImage>(),
   legalNotice: text("legal_notice"),
   // Réseaux sociaux éditables et extensibles (n'importe quel réseau du registre).

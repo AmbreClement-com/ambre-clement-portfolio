@@ -12,6 +12,7 @@ import {
   Images,
   FolderOpen,
   Tag,
+  AtSign,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -219,6 +220,20 @@ export function AdminNav({
           </div>
         </div>
       )}
+
+      {/* Onglet Contact — toujours présent (coordonnées + page publique /contact). */}
+      <Link
+        href="/admin/contact"
+        className={itemClass(pathname === "/admin/contact")}
+      >
+        <AtSign
+          className={cn(
+            "size-4",
+            pathname === "/admin/contact" && "text-primary",
+          )}
+        />
+        Contact
+      </Link>
 
       <Link
         href="/admin/settings"

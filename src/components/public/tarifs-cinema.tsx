@@ -10,7 +10,6 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { ResponsiveImage } from "@/components/public/responsive-image";
 import { FrameMeta } from "@/components/public/frame-context";
-import { pageZoom } from "@/lib/page-zoom";
 import type { Pricing } from "@/server/db/schema";
 
 const RM_QUERY = "(prefers-reduced-motion: reduce)";
@@ -204,10 +203,11 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   const n = pricings.length;
   const [active, setActive] = useState(0);
   const reduced = usePrefersReducedMotion();
-  // TACTILE : course réduite par tarif + snap CSS natif (même mécanique que le cinéma
-  // projets — cf. projects-cinema.tsx). Desktop inchangé (100vh + snap JS Lenis).
+  // TACTILE : le cinéma (slides à hauteur d'écran FIXE, overflow-hidden) COUPE le texte
+  // des tarifs longs sur téléphone. On bascule donc sur une PILE éditoriale en scroll
+  // natif (cf. TarifsStack, rendu plus bas) : tout le texte est toujours lisible.
+  // Le cinéma (fondu + dolly + snap Lenis) reste l'expérience desktop.
   const touch = useIsTouch();
-  const stepVh = touch ? 60 : 100;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -215,7 +215,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
-    if (reduced || n === 0) return;
+    if (reduced || n === 0 || touch) return; // tactile → TarifsStack (pas de cinéma)
     const STEP = 66; // hauteur vignette + écart
     // lerp élevé (avant 0.08) = inertie courte → pas de "glisse" entre deux tarifs.
     const lenis = new Lenis({ lerp: 0.2 });
@@ -293,49 +293,13 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
       // l'inertie → plus de temps mort "coincé" entre deux tarifs.
       idle = setTimeout(snap, Math.abs(lenis.velocity) < 5 ? 0 : 40);
     };
-    // Snap JS = desktop uniquement ; au tactile le scroll-snap CSS natif recale.
-    if (!touch) lenis.on("scroll", onScroll);
+    lenis.on("scroll", onScroll);
 
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(idle);
       lenis.destroy();
       lenisRef.current = null;
-    };
-  }, [reduced, n, touch]);
-
-  // TACTILE : snap natif + marqueurs alignés en px sur les paliers réels (sinon, en vh,
-  // ils divergent d'`innerHeight` quand la barre Safari iOS se replie → snap à côté du
-  // palier). Snap SUSPENDU pendant les transitions (pageZoom < 1) : le snap `mandatory`
-  // vise les positions TRANSFORMÉES et re-scrollait le document en plein zoom → la scène
-  // sticky sortait du petit cadre. Même mécanique que le cinéma projets.
-  useEffect(() => {
-    if (reduced || n === 0 || !touch) return;
-    const el = document.documentElement;
-    const wrap = wrapRef.current;
-    const place = () => {
-      if (!wrap) return;
-      const total = wrap.offsetHeight - window.innerHeight;
-      wrap
-        .querySelectorAll<HTMLElement>("[data-cinema-snap]")
-        .forEach((m, k) => {
-          m.style.top = `${n > 1 ? (k / (n - 1)) * total : 0}px`;
-        });
-    };
-    place();
-    window.addEventListener("resize", place);
-    let raf = 0;
-    const tick = () => {
-      const want = pageZoom.value >= 0.999;
-      if (el.classList.contains("ac-snap-y") !== want)
-        el.classList.toggle("ac-snap-y", want);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", place);
-      el.classList.remove("ac-snap-y");
     };
   }, [reduced, n, touch]);
 
@@ -346,11 +310,13 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     const total = wrap.offsetHeight - window.innerHeight;
     const rectTop = wrap.getBoundingClientRect().top;
     const desired = n > 1 ? (i / (n - 1)) * total : 0;
-    const top = window.scrollY + rectTop + desired;
-    // Tactile : scroll natif (le snap CSS accompagne) ; desktop : Lenis (inchangé).
-    if (touch) window.scrollTo({ top, behavior: "smooth" });
-    else lenis.scrollTo(top, { duration: 1.1 });
+    lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 1.1 });
   };
+
+  // ---- TACTILE : pile éditoriale en scroll natif (tout le texte lisible) ----
+  if (touch && !reduced && n > 0) {
+    return <TarifsStack pricings={pricings} />;
+  }
 
   // ---- Repli accessible (reduced-motion) : tarifs empilés ----
   if (reduced) {
@@ -367,24 +333,8 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   }
 
   return (
-    // Hauteur = 1 écran + (n-1) pas ; la scène est "sticky". Desktop : pas de 100vh
-    // (identique à avant) ; tactile : pas réduit (cf. stepVh).
-    <div
-      ref={wrapRef}
-      style={{ height: `calc(100vh + ${(n - 1) * stepVh}vh)` }}
-      className="relative bg-white"
-    >
-      {/* Marqueurs de snap natif (tactile) : un par tarif, aux paliers exacts. */}
-      {touch &&
-        Array.from({ length: n }, (_, k) => (
-          <div
-            key={k}
-            aria-hidden
-            data-cinema-snap
-            className="absolute left-0 h-px w-px"
-            style={{ top: `${k * stepVh}vh`, scrollSnapAlign: "start" }}
-          />
-        ))}
+    // Hauteur = n écrans → marge de défilement ; la scène est "sticky".
+    <div ref={wrapRef} style={{ height: `${n * 100}vh` }} className="relative bg-white">
       {/* Compteur du cadre (haut droite) = « (01 / 03) », comme le cinéma projets. */}
       <FrameMeta title="Tarifs" count={n} current={active + 1} />
       <div className="sticky top-0 h-screen overflow-hidden bg-white text-neutral-900">
@@ -469,5 +419,51 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * TACTILE — pile éditoriale en scroll natif : chaque tarif est une SECTION pleine
+ * (le cinéma à hauteur d'écran fixe coupait le texte des tarifs longs sur téléphone).
+ * Le compteur du cadre « (01 / 03) » suit la section la plus visible (scroll-spy).
+ */
+function TarifsStack({ pricings }: { pricings: Pricing[] }) {
+  const n = pricings.length;
+  const [active, setActive] = useState(0);
+  const secRefs = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    // Section active = celle qui traverse la bande CENTRALE de l'écran (10 % de haut).
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const i = secRefs.current.indexOf(e.target as HTMLElement);
+          if (i >= 0) setActive(i);
+        }
+      },
+      { rootMargin: "-45% 0px -45% 0px" },
+    );
+    secRefs.current.forEach((el) => el && io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <main className="w-full bg-white px-11 pb-24 pt-28">
+      <FrameMeta title="Tarifs" count={n} current={active + 1} />
+      <div className="mx-auto grid max-w-xl gap-12">
+        {pricings.map((p, i) => (
+          <section
+            key={p.id}
+            ref={(el) => {
+              secRefs.current[i] = el;
+            }}
+            className={i > 0 ? "border-t border-neutral-200 pt-12" : undefined}
+          >
+            <TarifBlock p={p} priority={i === 0} />
+          </section>
+        ))}
+      </div>
+    </main>
   );
 }

@@ -237,6 +237,9 @@ export function ProjectsCinema({
     let raf = 0;
     let last = -1;
 
+    let lastAf = -1;
+    let lastVh = -1;
+    let lastVw = -1;
     const loop = (t: number) => {
       lenis.raf(t);
       const wrap = wrapRef.current;
@@ -247,6 +250,16 @@ export function ProjectsCinema({
         const rectTop = wrap.getBoundingClientRect().top;
         const traveled = Math.min(Math.max(-rectTop, 0), total);
         const af = total > 0 ? (traveled / total) * (n - 1) : 0; // index flottant 0..n-1
+
+        // PERF : à l'arrêt (af inchangé), on ne réécrit pas 4 styles × n couches à
+        // chaque frame — la boucle ne fait plus que lire. Reprend dès que ça bouge.
+        if (af === lastAf && vh === lastVh && vw === lastVw) {
+          raf = requestAnimationFrame(loop);
+          return;
+        }
+        lastAf = af;
+        lastVh = vh;
+        lastVw = vw;
 
         const layers = layerRefs.current;
         for (let i = 0; i < layers.length; i++) {
@@ -325,11 +338,44 @@ export function ProjectsCinema({
     };
   }, [reduced, n, touch]);
 
-  // TACTILE : active le snap natif du document (marqueurs [data-cinema-snap] ci-dessous).
+  // TACTILE : active le snap natif du document (marqueurs [data-cinema-snap] ci-dessous)
+  // et ALIGNE les marqueurs sur les paliers RÉELS en px : posés en vh, ils divergent de
+  // `innerHeight` quand la barre d'outils de Safari iOS se replie → le snap se calait un
+  // poil À CÔTÉ du palier (slide légèrement transparente/décalée). On mesure, et on suit
+  // les resize (le repli de la barre iOS en déclenche un).
   useEffect(() => {
     if (reduced || n === 0 || !touch) return;
-    document.documentElement.classList.add("ac-snap-y");
-    return () => document.documentElement.classList.remove("ac-snap-y");
+    const el = document.documentElement;
+    const wrap = wrapRef.current;
+    const place = () => {
+      if (!wrap) return;
+      const total = wrap.offsetHeight - window.innerHeight;
+      wrap
+        .querySelectorAll<HTMLElement>("[data-cinema-snap]")
+        .forEach((m, k) => {
+          m.style.top = `${n > 1 ? (k / (n - 1)) * total : 0}px`;
+        });
+    };
+    place();
+    window.addEventListener("resize", place);
+    // ⚠️ Snap SUSPENDU pendant les transitions de page (pageZoom < 1) : le snap
+    // `mandatory` calcule ses cibles sur les positions TRANSFORMÉES — quand la page est
+    // scalée (dézoom), les marqueurs « rétrécissent » et le navigateur RE-SCROLLE le
+    // document en plein zoom pour se recaler. La scène sticky suit ce scroll parasite →
+    // la galerie sortait du petit cadre (affichée en haut). Actif au repos uniquement.
+    let raf = 0;
+    const tick = () => {
+      const want = pageZoom.value >= 0.999;
+      if (el.classList.contains("ac-snap-y") !== want)
+        el.classList.toggle("ac-snap-y", want);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", place);
+      el.classList.remove("ac-snap-y");
+    };
   }, [reduced, n, touch]);
 
   const goTo = (i: number) => {

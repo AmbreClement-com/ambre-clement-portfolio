@@ -562,12 +562,31 @@ export function SiteFrame({
       stopFmLoop();
       const ctl = { raf: 0, done: false };
       fmScramble = ctl;
+      // PERF (jank des transitions) : avant, CHAQUE frame relançait 2 TreeWalker sur
+      // toute la page + `setNowrap` (sondes getClientRects = LAYOUT FORCÉ par frame),
+      // en parallèle des tweens GSAP → à-coups sur tous les appareils. Désormais on
+      // (re)capture les nœuds toutes les ~6 frames (le texte de la nouvelle page
+      // apparaît en cours de route — 100 ms de latence, invisible : le cache opaque
+      // de la pilule couvre la page à ce moment-là) et on ne « nowrap » que les
+      // nœuds PAS ENCORE traités (une sonde layout par nœud, une seule fois).
+      let frame = 0;
+      let mainNodes: Text[] = [];
+      let frameNodes: Text[] = [];
+      const wrapped = new WeakSet<Text>();
+      const refresh = () => {
+        mainNodes = mainText();
+        frameNodes = frameText();
+        const fresh = [...mainNodes, ...frameNodes].filter((f) => !wrapped.has(f));
+        if (fresh.length) {
+          setNowrap(fresh, true);
+          fresh.forEach((f) => wrapped.add(f));
+        }
+      };
       const tick = () => {
         if (ctl.done) return;
+        if (frame % 6 === 0) refresh();
+        frame++;
         const soft = pathRef.current === "/contact"; // Contact = contenu manuscrit
-        const mainNodes = mainText();
-        const frameNodes = frameText();
-        setNowrap([...mainNodes, ...frameNodes], true);
         frameNodes.forEach((f) => scrambleNode(f)); // cadre : toujours Matrix
         // contenu : Matrix, SAUF Contact où on le maintient VIDE (prêt à s'écrire à la fin,
         // sinon son texte clair « flasherait » avant l'écriture manuscrite).

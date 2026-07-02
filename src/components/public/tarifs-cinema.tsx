@@ -10,6 +10,7 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { ResponsiveImage } from "@/components/public/responsive-image";
 import { FrameMeta } from "@/components/public/frame-context";
+import { pageZoom } from "@/lib/page-zoom";
 import type { Pricing } from "@/server/db/schema";
 
 const RM_QUERY = "(prefers-reduced-motion: reduce)";
@@ -222,6 +223,8 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     let raf = 0;
     let last = -1;
 
+    let lastAf = -1;
+    let lastVh = -1;
     const loop = (t: number) => {
       lenis.raf(t);
       const wrap = wrapRef.current;
@@ -231,6 +234,14 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
         const rectTop = wrap.getBoundingClientRect().top;
         const traveled = Math.min(Math.max(-rectTop, 0), total);
         const af = total > 0 ? (traveled / total) * (n - 1) : 0;
+
+        // PERF : à l'arrêt (af inchangé), aucune réécriture de styles par frame.
+        if (af === lastAf && vh === lastVh) {
+          raf = requestAnimationFrame(loop);
+          return;
+        }
+        lastAf = af;
+        lastVh = vh;
 
         const layers = layerRefs.current;
         for (let i = 0; i < layers.length; i++) {
@@ -293,11 +304,39 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     };
   }, [reduced, n, touch]);
 
-  // TACTILE : active le snap natif du document (marqueurs [data-cinema-snap] ci-dessous).
+  // TACTILE : snap natif + marqueurs alignés en px sur les paliers réels (sinon, en vh,
+  // ils divergent d'`innerHeight` quand la barre Safari iOS se replie → snap à côté du
+  // palier). Snap SUSPENDU pendant les transitions (pageZoom < 1) : le snap `mandatory`
+  // vise les positions TRANSFORMÉES et re-scrollait le document en plein zoom → la scène
+  // sticky sortait du petit cadre. Même mécanique que le cinéma projets.
   useEffect(() => {
     if (reduced || n === 0 || !touch) return;
-    document.documentElement.classList.add("ac-snap-y");
-    return () => document.documentElement.classList.remove("ac-snap-y");
+    const el = document.documentElement;
+    const wrap = wrapRef.current;
+    const place = () => {
+      if (!wrap) return;
+      const total = wrap.offsetHeight - window.innerHeight;
+      wrap
+        .querySelectorAll<HTMLElement>("[data-cinema-snap]")
+        .forEach((m, k) => {
+          m.style.top = `${n > 1 ? (k / (n - 1)) * total : 0}px`;
+        });
+    };
+    place();
+    window.addEventListener("resize", place);
+    let raf = 0;
+    const tick = () => {
+      const want = pageZoom.value >= 0.999;
+      if (el.classList.contains("ac-snap-y") !== want)
+        el.classList.toggle("ac-snap-y", want);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", place);
+      el.classList.remove("ac-snap-y");
+    };
   }, [reduced, n, touch]);
 
   const goTo = (i: number) => {

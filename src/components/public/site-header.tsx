@@ -209,6 +209,7 @@ export function SiteHeader({
     const tl = gsap.timeline({
       onComplete: () => {
         // rend la main à React/Tailwind : la pilule reprend sa place + son verre
+        pill.classList.remove("glass-paused"); // ré-active le backdrop-blur (verre)
         gsap.set(pill, {
           clearProps:
             "position,left,top,width,height,maxWidth,margin,zIndex,borderRadius,transition",
@@ -413,6 +414,10 @@ export function SiteHeader({
         { fontSize: bigSize, duration: 0.5, ease: "power2.out" },
         1.05,
       );
+      // PERF mobile : une fois le cache quasi opaque (~1.2), on SUSPEND le backdrop-blur
+      // (invisible derrière le cache) → le déploiement plein écran ne re-floute plus le
+      // viewport à chaque frame. Restauré à la fin du reveal() (barre reposée).
+      tl.call(() => pill.classList.add("glass-paused"), undefined, 1.2);
       // PALIER DE LECTURE : le nom posé (~1.5) reste lisible un court instant avant
       // de naviguer.
       tl.call(() => router.push(href), undefined, 1.92);
@@ -464,6 +469,7 @@ export function SiteHeader({
       const fW = vw * z;
       const fH = vh * z;
       pill.style.transition = "none";
+      pill.classList.add("glass-paused"); // plein écran + cache opaque → blur inutile (cher)
       gsap.set(pill, {
         position: "fixed",
         left: fLeft,

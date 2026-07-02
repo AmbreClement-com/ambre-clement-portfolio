@@ -319,6 +319,14 @@ html.ac-snap-y {
   -webkit-backdrop-filter: blur(2px) saturate(1.35);
   backdrop-filter: blur(2px) saturate(1.35);
 }
+/* Pendant la phase PLEIN ÉCRAN de la transition navbar : le backdrop-filter forcerait
+   le re-floutage d'une zone plein viewport À CHAQUE FRAME du morphing (très cher sur
+   mobile), alors que le cache opaque interne masque de toute façon l'arrière-plan.
+   On le suspend (posé quand le cache est quasi opaque, retiré une fois la barre posée). */
+.glass-refract.glass-paused {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
 
 /* Admin connecté : sur mobile + petite tablette (< lg), la barre admin flottante occupe
    le bas-centre. On remonte donc la nav prev/suivant du cadre (.project-nav) pour qu'elle

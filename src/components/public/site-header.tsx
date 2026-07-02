@@ -7,6 +7,7 @@ import gsap from "gsap";
 import { cn } from "@/lib/utils";
 import { MIN_ZOOM } from "@/lib/page-zoom";
 import { markReturn } from "@/components/public/project-transition";
+import { useFrameMeta } from "@/components/public/frame-context";
 
 type NavCategory = { name: string; slug: string; type?: string };
 
@@ -82,6 +83,7 @@ export function SiteHeader({
   speed: number;
 }) {
   const router = useRouter();
+  const ctx = useFrameMeta(); // meta de la page courante (dont `activeHref` éventuel)
   // facteur de vitesse (timeScale GSAP) accessible dans run/reveal (callbacks).
   const speedRef = useRef(speed);
   useEffect(() => {
@@ -89,6 +91,17 @@ export function SiteHeader({
   }, [speed]);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Ouverture au SURVOL réservée aux appareils qui survolent réellement (souris). Sur
+  // tactile, `mouseenter` se déclenche au tap AVANT le `click` → le menu s'ouvrirait puis
+  // se refermerait aussitôt (double bascule). On désactive donc le survol sans vrai hover.
+  const [canHover, setCanHover] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover)");
+    const apply = () => setCanHover(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   // Verre TOUJOURS clair (blanc) → identique à la barre admin, sur toutes les pages quel
   // que soit leur ton. Contenu foncé, bien lisible sur le blanc.
@@ -111,17 +124,22 @@ export function SiteHeader({
     { href: "/contact", label: "Contact", cinema: false },
   ];
 
-  const isActive = (href: string) =>
-    href === "/"
-      ? pathname === "/"
-      : pathname === href || pathname.startsWith(href + "/");
+  // Surbrillance forcée fournie par la page (ex. page projet → sa catégorie parente).
+  const activeHref = ctx?.meta?.activeHref ?? null;
+  const isActive = (href: string) => {
+    const base =
+      href === "/"
+        ? pathname === "/"
+        : pathname === href || pathname.startsWith(href + "/");
+    return base || (activeHref != null && href === activeHref);
+  };
 
   // ---- Transition de page (la pilule se transforme) -------------------------
   const headerRef = useRef<HTMLElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
   const coverRef = useRef<HTMLDivElement>(null); // cache opaque (masque le swap)
   const barRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLAnchorElement>(null);
+  const logoRef = useRef<HTMLButtonElement>(null);
   const dotsRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -476,6 +494,18 @@ export function SiteHeader({
     return () => window.removeEventListener("ac:intro-return", onIntroReturn);
   }, [reveal]);
 
+  // Fermeture au clic EN DEHORS de la pilule (utile surtout sur tactile, où il n'y a pas
+  // de `mouseleave` pour refermer). Sur souris, le `mouseleave` s'en charge déjà.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (pillRef.current && !pillRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [open]);
+
   // Interception des clics sur liens internes (capture → avant next/link).
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -554,8 +584,8 @@ export function SiteHeader({
     >
       <div
         ref={pillRef}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        onMouseEnter={canHover ? () => setOpen(true) : undefined}
+        onMouseLeave={canHover ? () => setOpen(false) : undefined}
         className={cn(
           "glass-refract pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[1.75rem] transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
           dark
@@ -603,13 +633,18 @@ export function SiteHeader({
             halo,
           )}
         >
-          <Link
-            href="/"
+          {/* Le logo N'EST PLUS un lien vers l'accueil : cliquer dessus OUVRE le menu
+              (comme le survol). L'accueil reste accessible via le 1er item du menu. */}
+          <button
+            type="button"
             ref={logoRef}
-            className="text-sm font-semibold uppercase tracking-[0.18em]"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+            className="cursor-pointer text-sm font-semibold uppercase tracking-[0.18em]"
           >
             Ambre Clément
-          </Link>
+          </button>
           <button
             type="button"
             ref={dotsRef}

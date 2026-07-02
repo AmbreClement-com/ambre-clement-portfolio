@@ -40,6 +40,12 @@ export type FrameMetaData = {
     total: number;
   } | null;
   /**
+   * href du menu à mettre en SURBRILLANCE (item actif) pour la page courante, quand il
+   * ne se déduit pas du pathname. Cas d'usage : une page projet (`/projects/slug`) veut
+   * activer sa CATÉGORIE parente (le cinéma d'où il vient, ex. "/" ou "/mariages").
+   */
+  activeHref?: string | null;
+  /**
    * Teinte du FOND de la page derrière la nav : "light" (pages claires/galeries)
    * ou "dark" (héros plein écran sur photo). La nav s'y adapte (texte sombre sur
    * clair, texte blanc sur sombre). Défaut : "light".
@@ -87,12 +93,14 @@ export function FrameMeta({
   projectTitle = null,
   projectLocation = null,
   projectYear = null,
+  activeHref = null,
 }: {
   title: string;
   count?: number | null;
   unit?: string;
   current?: number | null;
   tone?: "light" | "dark";
+  activeHref?: string | null;
   /** Navigation projet (passée en primitives pour des deps stables). */
   navIndex?: number;
   navTotal?: number;
@@ -133,7 +141,7 @@ export function FrameMeta({
             total: navTotal ?? 1,
           }
         : null;
-    set?.({ title, count, unit, current, tone, nav, projectInfo });
+    set?.({ title, count, unit, current, tone, nav, projectInfo, activeHref });
     return () => set?.(null);
   }, [
     set,
@@ -153,6 +161,7 @@ export function FrameMeta({
     projectTitle,
     projectLocation,
     projectYear,
+    activeHref,
   ]);
   return null;
 }

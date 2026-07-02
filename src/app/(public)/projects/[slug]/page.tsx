@@ -118,6 +118,9 @@ export default async function ProjectPage({ params }: Params) {
           projectTitle={project.title}
           projectLocation={project.location}
           projectYear={projectYear}
+          // Surbrillance dans la navbar = la CATÉGORIE parente (le cinéma d'où vient le
+          // projet). `cinemaUrl` correspond exactement au href du menu ("/" ou "/slug").
+          activeHref={cinemaUrl}
         />
         <h1 className="sr-only">{project.title} — Ambre Clément</h1>
         <PhotosScroller

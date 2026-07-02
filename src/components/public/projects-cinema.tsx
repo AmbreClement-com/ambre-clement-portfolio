@@ -49,6 +49,19 @@ function usePrefersReducedMotion() {
   );
 }
 
+const TOUCH_QUERY = "(pointer: coarse)";
+function useIsTouch() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(TOUCH_QUERY);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(TOUCH_QUERY).matches,
+    () => false,
+  );
+}
+
 /**
  * Navigateur cinématique façon "viseur" : le scroll fait défiler les projets
  * un à un (fondu + dolly), avec bande de vignettes, grand index et métadonnées
@@ -77,6 +90,12 @@ export function ProjectsCinema({
   // la main (`ac:hud-release`) → un seul HUD, pas de doublon à l'atterrissage.
   const [returning, setReturning] = useState(false);
   const reduced = usePrefersReducedMotion();
+  // TACTILE (pointer: coarse) : mécanique de scroll adaptée — course RÉDUITE par projet
+  // (une pichenette = un projet, au lieu de 100vh à balayer) et snap NATIF (CSS
+  // scroll-snap, cf. `ac-snap-y`) : le momentum iOS n'est plus combattu par le snap JS.
+  const touch = useIsTouch();
+  // Course de scroll par projet (vh) : 100 sur desktop (inchangé), 60 au tactile.
+  const stepVh = touch ? 60 : 100;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -149,7 +168,11 @@ export function ProjectsCinema({
       setActive(i);
       return;
     }
-    const total = wrap.offsetHeight - window.innerHeight;
+    // Course calculée depuis le PAS (et non wrap.offsetHeight) : au montage, la hauteur
+    // DOM correspond encore à touch=false (le re-rendu tactile est flushé juste après,
+    // avant le paint) → on vise directement la géométrie FINALE.
+    const step = window.matchMedia("(pointer: coarse)").matches ? 60 : 100;
+    const total = ((n - 1) * step * window.innerHeight) / 100;
     const target = wrap.offsetTop + (n > 1 ? (i / (n - 1)) * total : 0);
     window.scrollTo(0, Math.max(0, target));
     setActive(i);
@@ -289,7 +312,10 @@ export function ProjectsCinema({
       // d'attendre la fin de l'inertie → plus de temps mort "coincé" entre 2 projets.
       idle = setTimeout(snap, Math.abs(lenis.velocity) < 5 ? 0 : 40);
     };
-    lenis.on("scroll", onScroll);
+    // Snap JS = DESKTOP uniquement (molette lissée par Lenis). Au tactile, c'est le
+    // scroll-snap CSS natif qui recale (cf. `ac-snap-y`) — le snap JS se battrait
+    // contre le momentum natif d'iOS (sensation de blocage).
+    if (!touch) lenis.on("scroll", onScroll);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -297,7 +323,14 @@ export function ProjectsCinema({
       lenis.destroy();
       lenisRef.current = null;
     };
-  }, [reduced, n]);
+  }, [reduced, n, touch]);
+
+  // TACTILE : active le snap natif du document (marqueurs [data-cinema-snap] ci-dessous).
+  useEffect(() => {
+    if (reduced || n === 0 || !touch) return;
+    document.documentElement.classList.add("ac-snap-y");
+    return () => document.documentElement.classList.remove("ac-snap-y");
+  }, [reduced, n, touch]);
 
   const goTo = (i: number) => {
     const wrap = wrapRef.current;
@@ -306,7 +339,10 @@ export function ProjectsCinema({
     const total = wrap.offsetHeight - window.innerHeight;
     const rectTop = wrap.getBoundingClientRect().top;
     const desired = n > 1 ? (i / (n - 1)) * total : 0;
-    lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 1.1 });
+    const top = window.scrollY + rectTop + desired;
+    // Tactile : scroll natif (le snap CSS accompagne) ; desktop : Lenis (inchangé).
+    if (touch) window.scrollTo({ top, behavior: "smooth" });
+    else lenis.scrollTo(top, { duration: 1.1 });
   };
 
   if (n === 0) {
@@ -356,8 +392,25 @@ export function ProjectsCinema({
   const y = year(current.shotDate);
 
   return (
-    // Hauteur = n écrans → marge de défilement ; la scène est "sticky".
-    <div ref={wrapRef} style={{ height: `${n * 100}vh` }} className="relative">
+    // Hauteur = 1 écran + (n-1) pas de défilement ; la scène est "sticky".
+    // Desktop : pas de 100vh (identique à avant) ; tactile : pas réduit (cf. stepVh).
+    <div
+      ref={wrapRef}
+      style={{ height: `calc(100vh + ${(n - 1) * stepVh}vh)` }}
+      className="relative"
+    >
+      {/* Marqueurs de snap natif (tactile) : un par projet, aux positions exactes des
+          paliers → le compositeur recale dessus, af retombe pile sur un entier. */}
+      {touch &&
+        Array.from({ length: n }, (_, k) => (
+          <div
+            key={k}
+            aria-hidden
+            data-cinema-snap
+            className="absolute left-0 h-px w-px"
+            style={{ top: `${k * stepVh}vh`, scrollSnapAlign: "start" }}
+          />
+        ))}
       {/* Atterrissage du clone partagé quand on revient d'un projet (rebond spring) */}
       <ProjectTransitionMount />
       {/* Compteur "01 / 06" du projet actif dans le cadre global */}

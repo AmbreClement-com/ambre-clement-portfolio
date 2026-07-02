@@ -245,6 +245,13 @@ html.ac-hide-scrollbar::-webkit-scrollbar {
   display: none; /* WebKit/Blink */
 }
 
+/* Cinémas (projets/tarifs) au TACTILE : snap NATIF du navigateur sur les marqueurs
+   [data-cinema-snap] (un par slide). Le compositeur gère l'inertie + le recalage →
+   soyeux, aucune lutte JS contre le momentum (contrairement à lenis.scrollTo). */
+html.ac-snap-y {
+  scroll-snap-type: y mandatory;
+}
+
 /* Apparition douce des photos (galeries) */
 .reveal-soft {
   opacity: 0;

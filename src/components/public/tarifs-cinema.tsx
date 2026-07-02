@@ -25,73 +25,170 @@ function usePrefersReducedMotion() {
   );
 }
 
-/** Bloc de contenu d'un tarif : photo à gauche, texte à droite. */
+const TOUCH_QUERY = "(pointer: coarse)";
+function useIsTouch() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(TOUCH_QUERY);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(TOUCH_QUERY).matches,
+    () => false,
+  );
+}
+
+/**
+ * Bloc de contenu d'un tarif.
+ *  • MOBILE (< md) : édito « texte d'abord » — petite photo en haut à droite,
+ *    en regard du titre ; le texte occupe toute la largeur, ponctué de filets
+ *    et de labels mono (même grammaire que le cadre/HUD du site). La position
+ *    dans le cinéma s'affiche dans le CADRE (haut droite), comme les projets.
+ *  • DESKTOP (md+) : inchangé — photo à gauche, texte à droite.
+ */
 function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
   const paragraphs = (p.intro ?? "")
     .split(/\n{2,}/)
     .map((s) => s.trim())
     .filter(Boolean);
   return (
-    <div className="grid w-full items-center gap-6 md:grid-cols-2 md:gap-12">
-      {/* PHOTO (gauche) — boîte FIXE. Sur mobile : petit accent (le texte prime) ;
-          sur desktop : pleine (max-w-sm). */}
-      <div>
-        {p.image ? (
-          <div className="relative mx-auto aspect-[3/4] w-full max-w-[180px] overflow-hidden shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)] sm:max-w-sm">
-            <ResponsiveImage
-              variants={p.image.variants}
-              alt={p.title}
-              width={p.image.width}
-              height={p.image.height}
-              lqip={p.image.lqip}
-              priority={priority}
-              sizes="(max-width: 768px) 80vw, 38vw"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+    <div className="w-full">
+      {/* ── MOBILE : le texte prime, la photo est un petit accent haut-droite ── */}
+      <div className="md:hidden">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[2rem] font-light uppercase leading-[1.05] tracking-wide text-neutral-900">
+              {p.title}
+            </h2>
+            {p.subtitle && (
+              <p className="mt-2.5 font-mono text-[11px] uppercase tracking-[0.15em] text-neutral-500">
+                {p.subtitle}
+              </p>
+            )}
           </div>
-        ) : (
-          <div className="mx-auto flex aspect-[3/4] w-full max-w-[180px] items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-400 sm:max-w-sm">
-            Aucune image
-          </div>
-        )}
-      </div>
+          {p.image && (
+            <div className="relative aspect-[3/4] w-24 shrink-0 overflow-hidden shadow-[0_18px_50px_-20px_rgba(0,0,0,0.45)]">
+              <ResponsiveImage
+                variants={p.image.variants}
+                alt={p.title}
+                width={p.image.width}
+                height={p.image.height}
+                lqip={p.image.lqip}
+                priority={priority}
+                sizes="96px"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </div>
+          )}
+        </div>
 
-      {/* TEXTE (droite) */}
-      <div className="text-neutral-900">
-        <h2 className="text-2xl font-light uppercase tracking-wide md:text-4xl">
-          {p.title}
-        </h2>
-        {p.subtitle && (
-          <p className="mt-2 text-sm font-medium text-neutral-600">
-            {p.subtitle}
-          </p>
+        <div className="mt-6 h-px w-full bg-neutral-200" />
+
+        {paragraphs.length > 0 && (
+          <div className="mt-5 space-y-3">
+            {paragraphs.map((para, i) => (
+              <p
+                key={i}
+                className="text-[13px] font-light leading-relaxed text-neutral-700"
+              >
+                {para}
+              </p>
+            ))}
+          </div>
         )}
-        {paragraphs.map((para, i) => (
-          <p
-            key={i}
-            className="mt-4 max-w-prose text-sm font-light leading-relaxed text-neutral-700"
-          >
-            {para}
-          </p>
-        ))}
+
         {p.includes.length > 0 && (
-          <div className="mt-5">
-            <p className="text-sm font-medium">La séance comprend :</p>
-            <ul className="mt-2 grid gap-1 text-sm font-light text-neutral-700">
+          <div className="mt-6">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-neutral-400">
+              La séance comprend
+            </p>
+            <ul className="mt-3 space-y-1.5">
               {p.includes.map((it, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="shrink-0 text-neutral-400">·</span>
+                <li
+                  key={i}
+                  className="flex gap-2.5 text-[13px] font-light leading-relaxed text-neutral-800"
+                >
+                  <span aria-hidden className="shrink-0 text-neutral-300">
+                    —
+                  </span>
                   <span>{it}</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
+
         {p.price && (
-          <p className="mt-6 inline-block bg-neutral-100 px-5 py-3 text-sm font-medium uppercase tracking-wide">
-            {p.price}
-          </p>
+          <div className="mt-7 flex items-baseline justify-between gap-4 border-y border-neutral-200 py-3.5">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-neutral-400">
+              Tarif
+            </span>
+            <span className="text-right text-base font-light tracking-wide text-neutral-900">
+              {p.price}
+            </span>
+          </div>
         )}
+      </div>
+
+      {/* ── DESKTOP (md+) : photo à gauche, texte à droite — inchangé ── */}
+      <div className="hidden w-full items-center gap-12 md:grid md:grid-cols-2">
+        <div>
+          {p.image ? (
+            <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)]">
+              <ResponsiveImage
+                variants={p.image.variants}
+                alt={p.title}
+                width={p.image.width}
+                height={p.image.height}
+                lqip={p.image.lqip}
+                priority={priority}
+                sizes="38vw"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="mx-auto flex aspect-[3/4] w-full max-w-sm items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-400">
+              Aucune image
+            </div>
+          )}
+        </div>
+
+        <div className="text-neutral-900">
+          <h2 className="text-2xl font-light uppercase tracking-wide md:text-4xl">
+            {p.title}
+          </h2>
+          {p.subtitle && (
+            <p className="mt-2 text-sm font-medium text-neutral-600">
+              {p.subtitle}
+            </p>
+          )}
+          {paragraphs.map((para, i) => (
+            <p
+              key={i}
+              className="mt-4 max-w-prose text-sm font-light leading-relaxed text-neutral-700"
+            >
+              {para}
+            </p>
+          ))}
+          {p.includes.length > 0 && (
+            <div className="mt-5">
+              <p className="text-sm font-medium">La séance comprend :</p>
+              <ul className="mt-2 grid gap-1 text-sm font-light text-neutral-700">
+                {p.includes.map((it, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="shrink-0 text-neutral-400">·</span>
+                    <span>{it}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {p.price && (
+            <p className="mt-6 inline-block bg-neutral-100 px-5 py-3 text-sm font-medium uppercase tracking-wide">
+              {p.price}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -106,6 +203,10 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   const n = pricings.length;
   const [active, setActive] = useState(0);
   const reduced = usePrefersReducedMotion();
+  // TACTILE : course réduite par tarif + snap CSS natif (même mécanique que le cinéma
+  // projets — cf. projects-cinema.tsx). Desktop inchangé (100vh + snap JS Lenis).
+  const touch = useIsTouch();
+  const stepVh = touch ? 60 : 100;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -181,7 +282,8 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
       // l'inertie → plus de temps mort "coincé" entre deux tarifs.
       idle = setTimeout(snap, Math.abs(lenis.velocity) < 5 ? 0 : 40);
     };
-    lenis.on("scroll", onScroll);
+    // Snap JS = desktop uniquement ; au tactile le scroll-snap CSS natif recale.
+    if (!touch) lenis.on("scroll", onScroll);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -189,7 +291,14 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
       lenis.destroy();
       lenisRef.current = null;
     };
-  }, [reduced, n]);
+  }, [reduced, n, touch]);
+
+  // TACTILE : active le snap natif du document (marqueurs [data-cinema-snap] ci-dessous).
+  useEffect(() => {
+    if (reduced || n === 0 || !touch) return;
+    document.documentElement.classList.add("ac-snap-y");
+    return () => document.documentElement.classList.remove("ac-snap-y");
+  }, [reduced, n, touch]);
 
   const goTo = (i: number) => {
     const wrap = wrapRef.current;
@@ -198,14 +307,17 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     const total = wrap.offsetHeight - window.innerHeight;
     const rectTop = wrap.getBoundingClientRect().top;
     const desired = n > 1 ? (i / (n - 1)) * total : 0;
-    lenis.scrollTo(window.scrollY + rectTop + desired, { duration: 1.1 });
+    const top = window.scrollY + rectTop + desired;
+    // Tactile : scroll natif (le snap CSS accompagne) ; desktop : Lenis (inchangé).
+    if (touch) window.scrollTo({ top, behavior: "smooth" });
+    else lenis.scrollTo(top, { duration: 1.1 });
   };
 
   // ---- Repli accessible (reduced-motion) : tarifs empilés ----
   if (reduced) {
     return (
       <main className="min-h-[100svh] w-full bg-white px-11 pb-24 pt-32 md:px-12 md:pt-24">
-        <FrameMeta title="Tarifs" />
+        <FrameMeta title="Tarifs" count={n} unit="Tarifs" />
         <div className="mx-auto grid max-w-5xl gap-20">
           {pricings.map((p, i) => (
             <TarifBlock key={p.id} p={p} priority={i === 0} />
@@ -216,9 +328,26 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   }
 
   return (
-    // Hauteur = n écrans → marge de défilement ; la scène est "sticky".
-    <div ref={wrapRef} style={{ height: `${n * 100}vh` }} className="relative bg-white">
-      <FrameMeta title="Tarifs" />
+    // Hauteur = 1 écran + (n-1) pas ; la scène est "sticky". Desktop : pas de 100vh
+    // (identique à avant) ; tactile : pas réduit (cf. stepVh).
+    <div
+      ref={wrapRef}
+      style={{ height: `calc(100vh + ${(n - 1) * stepVh}vh)` }}
+      className="relative bg-white"
+    >
+      {/* Marqueurs de snap natif (tactile) : un par tarif, aux paliers exacts. */}
+      {touch &&
+        Array.from({ length: n }, (_, k) => (
+          <div
+            key={k}
+            aria-hidden
+            data-cinema-snap
+            className="absolute left-0 h-px w-px"
+            style={{ top: `${k * stepVh}vh`, scrollSnapAlign: "start" }}
+          />
+        ))}
+      {/* Compteur du cadre (haut droite) = « (01 / 03) », comme le cinéma projets. */}
+      <FrameMeta title="Tarifs" count={n} current={active + 1} />
       <div className="sticky top-0 h-screen overflow-hidden bg-white text-neutral-900">
         {/* Couches (fondu + dolly) — chaque couche = un tarif complet */}
         <div className="absolute inset-0">
@@ -228,7 +357,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
               ref={(el) => {
                 layerRefs.current[i] = el;
               }}
-              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-24 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-24 md:py-0"
+              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-32 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-24 md:py-0"
               style={{ opacity: i === 0 ? 1 : 0 }}
             >
               <div className="w-full max-w-4xl">
@@ -268,8 +397,10 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           </div>
         </div>
 
-        {/* Bande de vignettes horizontale (mobile) — navigation entre tarifs, dans le cadre. */}
-        <div className="absolute inset-x-0 bottom-12 flex justify-center px-4 md:hidden">
+        {/* Bande de vignettes horizontale (mobile) — navigation entre tarifs. Relevée
+            AU-DESSUS des repères de coin du cadre (bottom-12 + size-4 → jusqu'à 64px) :
+            elle se pose ainsi clairement À L'INTÉRIEUR du cadre. */}
+        <div className="absolute inset-x-0 bottom-20 flex justify-center px-4 md:hidden">
           <div className="flex max-w-[92vw] gap-1.5 overflow-x-auto pb-1">
             {pricings.map((p, i) => (
               <button

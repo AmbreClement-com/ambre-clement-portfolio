@@ -98,7 +98,11 @@ export function SiteHeader({
   useEffect(() => {
     speedRef.current = speed;
   }, [speed]);
-  const pathname = usePathname();
+  // ⚠️ Sur Vercel, la RACINE est rendue en interne sous « /index » → au pré-rendu,
+  // usePathname() renvoie "/index" et AUCUN item du menu ne matche href="/" (la
+  // 1ʳᵉ page n'était jamais « focus » en prod). On normalise vers "/".
+  const rawPathname = usePathname();
+  const pathname = rawPathname === "/index" ? "/" : rawPathname;
   const [open, setOpen] = useState(false);
   // Ouverture au SURVOL réservée aux appareils qui survolent réellement (souris). Sur
   // tactile, `mouseenter` se déclenche au tap AVANT le `click` → le menu s'ouvrirait puis

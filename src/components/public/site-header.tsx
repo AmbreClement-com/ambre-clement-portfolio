@@ -150,6 +150,8 @@ export function SiteHeader({
   // ---- Transition de page (la pilule se transforme) -------------------------
   const headerRef = useRef<HTMLElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
+  const glassRef = useRef<HTMLDivElement>(null); // calque backdrop-blur (verre)
+  const blendTitleRef = useRef<HTMLDivElement>(null); // titre en inversion (hors header)
   const coverRef = useRef<HTMLDivElement>(null); // cache opaque (masque le swap)
   const barRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLButtonElement>(null);
@@ -225,7 +227,7 @@ export function SiteHeader({
     const tl = gsap.timeline({
       onComplete: () => {
         // rend la main à React/Tailwind : la pilule reprend sa place + son verre
-        pill.classList.remove("glass-paused"); // ré-active le backdrop-blur (verre)
+        glassRef.current?.classList.remove("glass-paused"); // ré-active le blur (verre)
         gsap.set(pill, {
           clearProps:
             "position,left,top,width,height,maxWidth,margin,zIndex,borderRadius,transition",
@@ -235,7 +237,7 @@ export function SiteHeader({
           gsap.set(title, { autoAlpha: 0, x: 0, fontSize: "" });
           title.textContent = "";
         }
-        if (bar) gsap.set(bar, { autoAlpha: 1 });
+        if (bar) gsap.set([bar, blendTitleRef.current], { autoAlpha: 1 });
         if (menu)
           gsap.set(menu, {
             autoAlpha: 1,
@@ -289,7 +291,12 @@ export function SiteHeader({
     }
     // la barre (verre) reprend la main : le vrai logo réapparaît à gauche — fondu
     // plus long et chevauchant le titre pour un atterrissage doux (pas de claquement).
-    if (bar) tl.to(bar, { autoAlpha: 1, duration: 0.5, ease: "power2.out" }, 2.55);
+    if (bar)
+      tl.to(
+        [bar, blendTitleRef.current],
+        { autoAlpha: 1, duration: 0.5, ease: "power2.out" },
+        2.55,
+      );
   }, [LOGO]);
 
   // SORTIE : centrage du logo, puis la pilule se déplie (LARGEUR puis HAUTEUR).
@@ -341,7 +348,11 @@ export function SiteHeader({
       tl.timeScale(speedRef.current); // vitesse globale (réglage back-office)
       // ── 1) LE MATRIX D'ABORD, SUR PLACE : le vrai logo s'efface, le titre
       //    scramblé apparaît à sa place et tourne (avant tout déplacement).
-      tl.to(bar, { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" }, 0);
+      tl.to(
+        [bar, blendTitleRef.current],
+        { autoAlpha: 0, duration: 0.2, ease: "power2.inOut" },
+        0,
+      );
       tl.to(title, { autoAlpha: 1, duration: 0.18, ease: "power2.out" }, 0.04);
       if (menu)
         tl.to(menu, { autoAlpha: 0, gridTemplateRows: "0fr", duration: 0.26, ease: "power2.inOut" }, 0);
@@ -433,7 +444,7 @@ export function SiteHeader({
       // PERF mobile : une fois le cache quasi opaque (~1.2), on SUSPEND le backdrop-blur
       // (invisible derrière le cache) → le déploiement plein écran ne re-floute plus le
       // viewport à chaque frame. Restauré à la fin du reveal() (barre reposée).
-      tl.call(() => pill.classList.add("glass-paused"), undefined, 1.2);
+      tl.call(() => glassRef.current?.classList.add("glass-paused"), undefined, 1.2);
       // PALIER DE LECTURE : le nom posé (~1.5) reste lisible un court instant avant
       // de naviguer.
       tl.call(() => router.push(href), undefined, 1.92);
@@ -485,7 +496,7 @@ export function SiteHeader({
       const fW = vw * z;
       const fH = vh * z;
       pill.style.transition = "none";
-      pill.classList.add("glass-paused"); // plein écran + cache opaque → blur inutile (cher)
+      glassRef.current?.classList.add("glass-paused"); // plein écran + cache opaque → blur inutile (cher)
       gsap.set(pill, {
         position: "fixed",
         left: fLeft,
@@ -497,7 +508,7 @@ export function SiteHeader({
         zIndex: 80,
         borderRadius: 0,
       });
-      gsap.set(bar, { autoAlpha: 0 });
+      gsap.set([bar, blendTitleRef.current], { autoAlpha: 0 });
       if (menu) gsap.set(menu, { autoAlpha: 0, gridTemplateRows: "0fr" });
       if (title) {
         gsap.set(title, {
@@ -600,6 +611,7 @@ export function SiteHeader({
   const arrow = dark ? "text-white/50" : "text-neutral-900/45";
 
   return (
+    <>
     <header
       ref={headerRef}
       className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center pt-4 md:pt-6"
@@ -618,7 +630,7 @@ export function SiteHeader({
           setOpen((o) => !o);
         }}
         className={cn(
-          "glass-refract pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
+          "pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
           dark
             ? open
               ? "bg-black/60 shadow-[0_18px_50px_-10px_rgba(0,0,0,0.55)] ring-1 ring-white/25"
@@ -628,6 +640,12 @@ export function SiteHeader({
               : "bg-white/18 shadow-[0_10px_35px_-8px_rgba(0,0,0,0.3)] ring-1 ring-white/40",
         )}
       >
+        {/* VERRE (backdrop-blur) sur un CALQUE interne — et non sur la pilule :
+            un backdrop-filter sur l'élément isolerait le mix-blend-difference du
+            titre, qui ne « verrait » plus la page derrière (titre blanc fantôme
+            sur fond clair). Ici le blend compose avec le rendu flouté du calque. */}
+        <div ref={glassRef} aria-hidden className="glass-refract pointer-events-none absolute inset-0" />
+
         {/* cache opaque (sous le titre) : monte en opacité au palier pour masquer
             totalement le swap des deux pages, puis se dissout au retour */}
         <div
@@ -673,7 +691,10 @@ export function SiteHeader({
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-            className="type-heading cursor-pointer text-sm font-semibold uppercase tracking-[0.18em]"
+            // Le TEXTE visible est porté par le calque `blendTitleRef` (inversion de
+            // couleur, hors header — cf. plus bas) : ici on garde un texte INVISIBLE
+            // pour la zone de clic, la taille et l'accessibilité.
+            className="type-heading cursor-pointer text-sm font-semibold uppercase tracking-[0.18em] opacity-0"
           >
             {siteName}
           </button>
@@ -764,5 +785,26 @@ export function SiteHeader({
         </div>
       </div>
     </header>
+
+      {/* TITRE DU SITE en INVERSION DE COULEUR — même mécanique que le cadre : le
+          mix-blend-difference doit être porté par un élément FIXED de niveau racine
+          (le header z-50 est un stacking context : tout blend interne ne « voit »
+          jamais la page). Ce calque, non cliquable, reproduit pixel pour pixel la
+          géométrie pilule+barre et se superpose au logo réel (rendu invisible) ;
+          il suit les fondus de la barre pendant les transitions. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-4 z-[55] flex justify-center mix-blend-difference md:top-6"
+      >
+        <div className="w-[calc(100vw-1.5rem)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]">
+          <div
+            ref={blendTitleRef}
+            className="type-heading select-none px-5 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-white"
+          >
+            {siteName}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

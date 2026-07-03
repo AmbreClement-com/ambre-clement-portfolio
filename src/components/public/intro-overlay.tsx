@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { MIN_ZOOM } from "@/lib/page-zoom";
 
-const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$*<>?/+=-§¤";
-const rnd = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
+// L'effet Matrix sur les LETTRES a été retiré : seuls les CHIFFRES « roulent ».
+const DIGITS = "0123456789";
+const rnd = () => DIGITS[(Math.random() * DIGITS.length) | 0];
 
 /**
- * Construit `to` (depuis `from`) en MANUSCRIT + MATRIX : la longueur affichée
- * interpole (les caractères s'ajoutent/s'effacent) sur les ~70 % premiers, puis se
- * fige L→R dans les ~25 % finaux. (Même logique que le titre de la navbar.)
+ * Construit `to` (depuis `from`) en MANUSCRIT : la longueur affichée interpole
+ * (les caractères s'ajoutent/s'effacent) sur les ~70 % premiers, puis se fige
+ * L→R dans les ~25 % finaux. Les lettres restent lisibles ; seuls les chiffres
+ * roulent avant de se poser. (Même logique que le titre de la navbar.)
  */
 function scrambleString(from: string, to: string, p: number): string {
   const lenFrom = from.length;
@@ -24,7 +26,10 @@ function scrambleString(from: string, to: string, p: number): string {
       continue;
     }
     const frac = lenTo > 1 ? i / (lenTo - 1) : 0;
-    out += ch !== undefined && p >= 0.75 + 0.22 * frac ? ch : rnd();
+    const resolved = ch !== undefined && p >= 0.75 + 0.22 * frac;
+    if (resolved) out += ch;
+    else if (ch !== undefined && ch >= "0" && ch <= "9") out += rnd();
+    else out += from[i] ?? ch ?? "";
   }
   return out;
 }
@@ -52,7 +57,8 @@ function handwriteScramble(to: string, p: number): string {
       out += ch;
       continue;
     }
-    out += front - i < band ? rnd() : ch; // dans la bande du stylo → brouillée
+    // Sous le stylo : seuls les CHIFFRES roulent ; les lettres s'écrivent nettes.
+    out += front - i < band && ch >= "0" && ch <= "9" ? rnd() : ch;
   }
   return out;
 }

@@ -19,23 +19,15 @@ const useIsoLayoutEffect =
 const pad3 = (n: number) => String(n).padStart(3, "0");
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
-// --- Effet Matrix / écriture, sur TOUT le texte, en gardant le TYPE de caractère
-const UP = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const LO = "abcdefghijklmnopqrstuvwxyz";
+// --- Effet « compteur » : SEULS LES CHIFFRES roulent (l'effet Matrix sur les
+//     lettres a été retiré de tout le site — le manuscrit, lui, demeure).
 const DI = "0123456789";
 const pick = (s: string) => s[(Math.random() * s.length) | 0];
-/** Brouille un caractère en gardant son type (chiffre↔chiffre, casse). Le reflux
- *  des titres est évité autrement : on force le texte sur une ligne (nowrap)
- *  pendant le Matrix (cf. `setNowrap`). */
+/** Brouille UNIQUEMENT les chiffres (compteurs, HUD, années) ; lettres, espaces
+ *  et ponctuation restent lisibles pendant toute la transition. */
 function scrambleChar(ch: string) {
   if (ch >= "0" && ch <= "9") return pick(DI);
-  // Toute LETTRE à casse (y compris accentuée/latin étendu : É, Ÿ, Œ, Ŝ…) → une lettre
-  // ASCII PLATE de même casse. Indispensable : sinon un caractère accentué « préservé »
-  // s'afficherait plus HAUT (accent au-dessus) que les autres pendant le Matrix.
-  const lo = ch.toLowerCase();
-  const up = ch.toUpperCase();
-  if (lo !== up) return ch === lo ? pick(LO) : pick(UP);
-  return ch; // espaces et ponctuation conservés
+  return ch;
 }
 // Tout caractère « brouillable » : n'importe quelle lettre ou chiffre Unicode (cohérent
 // avec scrambleChar → aucune lettre accentuée n'est préservée/affichée en grand).
@@ -96,6 +88,13 @@ function resolveNode(node: Text) {
   write(node, realOf(node));
 }
 
+/** Nœud d'un texte qui CHANGE selon la page ([data-frame-swap] : titre, compteur,
+ *  nav projet) → effacé/réécrit en MANUSCRIT pendant la transition, au lieu de
+ *  rester immobile comme les textes stables du cadre. */
+function isSwapNode(n: Text): boolean {
+  return !!n.parentElement?.closest("[data-frame-swap]");
+}
+
 // --- Variante DOUCE « manuscrite » (sans brouillage), pour les pages chargées en
 //     texte (Contact) où le Matrix scintille trop : le texte s'écrit / s'efface.
 /** ÉCRITURE (entrée) : le texte apparaît de gauche à droite (p: 0→1). */
@@ -152,9 +151,10 @@ function collectTextNodes(root: HTMLElement): Text[] {
 }
 
 /** Contenu du HUD projet (droite) : grand numéro + Projet / Lieu / Année. Identique
- *  que le HUD soit dans le cadre (z-30, part avec lui) ou sur le calque persistant
- *  (z-90, projet → projet). */
-function HudInner({
+ *  que le HUD soit dans le cadre (z-30, part avec lui), sur le calque persistant
+ *  (z-90, projet → projet) OU dans le cinéma projets (exporté → style unique du
+ *  HUD sur toutes les pages). */
+export function HudInner({
   info,
 }: {
   info: NonNullable<FrameMetaData["projectInfo"]>;
@@ -545,17 +545,22 @@ export function SiteFrame({
     // Boucle de brouillage CONTINU du cadre + contenu pendant l'ENTRÉE (miroir de la boucle
     // du HUD) : tout reste en Matrix jusqu'à la résolution COMMUNE. Sans elle, en décalant le
     // décodage vers la fin, le texte de la nouvelle page resterait CLAIR au début (flash).
-    let fmScramble: { raf: number; done: boolean } | null = null;
+    let fmScramble: { raf: number; done: boolean; mo?: MutationObserver } | null =
+      null;
     const stopFmLoop = () => {
       if (fmScramble && !fmScramble.done) {
         fmScramble.done = true;
         cancelAnimationFrame(fmScramble.raf);
+        fmScramble.mo?.disconnect();
       }
       fmScramble = null;
     };
     const startFrameMainScramble = () => {
       stopFmLoop();
-      const ctl = { raf: 0, done: false };
+      const ctl: { raf: number; done: boolean; mo?: MutationObserver } = {
+        raf: 0,
+        done: false,
+      };
       fmScramble = ctl;
       // PERF (jank des transitions) : avant, CHAQUE frame relançait 2 TreeWalker sur
       // toute la page + `setNowrap` (sondes getClientRects = LAYOUT FORCÉ par frame),
@@ -568,14 +573,16 @@ export function SiteFrame({
       let mainNodes: Text[] = [];
       let frameNodes: Text[] = [];
       const wrapped = new WeakSet<Text>();
-      const refresh = () => {
-        mainNodes = mainText();
+      const refresh = (mainToo: boolean) => {
+        // Le CADRE (petit) est re-capturé À CHAQUE frame : sinon le nouveau titre
+        // ([data-frame-swap]) « flashe » en clair ~100 ms avant sa mise à vide.
         frameNodes = frameText();
+        if (mainToo) mainNodes = mainText(); // <main> = TreeWalker coûteux → throttlé
         // Contact (manuscrit) : le CONTENU part de VIDE et s'écrit en grandissant. Il ne
         // faut PAS le nowrap : mesuré vide il passe pour mono-ligne, et tout le
         // paragraphe s'écrirait sur UNE seule ligne (débordement) au lieu de se
-        // répartir naturellement vers sa disposition finale. Le cadre, lui, reste
-        // brouillé à longueur constante → nowrap sûr.
+        // répartir naturellement vers sa disposition finale. Le cadre, lui, garde une
+        // longueur constante (chiffres) ou vide (swap) → nowrap sûr.
         const soft = pathRef.current === "/contact";
         const fresh = (soft ? frameNodes : [...mainNodes, ...frameNodes]).filter(
           (f) => !wrapped.has(f),
@@ -587,16 +594,41 @@ export function SiteFrame({
       };
       const tick = () => {
         if (ctl.done) return;
-        if (frame % 6 === 0) refresh();
+        refresh(frame % 6 === 0);
         frame++;
         const soft = pathRef.current === "/contact"; // Contact = contenu manuscrit
-        frameNodes.forEach((f) => scrambleNode(f)); // cadre : toujours Matrix
-        // contenu : Matrix, SAUF Contact où on le maintient VIDE (prêt à s'écrire à la fin,
-        // sinon son texte clair « flasherait » avant l'écriture manuscrite).
+        // Cadre : les textes stables roulent (chiffres) ; ceux qui CHANGENT de page
+        // ([data-frame-swap]) restent VIDES, prêts à s'écrire en manuscrit à la fin.
+        frameNodes.forEach((f) =>
+          isSwapNode(f) ? writeNode(f, 0) : scrambleNode(f),
+        );
+        // contenu : chiffres qui roulent, SAUF Contact où on le maintient VIDE (prêt à
+        // s'écrire à la fin, sinon son texte clair « flasherait » avant l'écriture).
         mainNodes.forEach((f) => (soft ? writeNode(f, 0) : scrambleNode(f)));
         ctl.raf = requestAnimationFrame(tick);
       };
       ctl.raf = requestAnimationFrame(tick);
+      // ZÉRO flash : quand React écrit le NOUVEAU texte du cadre (commit de la page
+      // d'arrivée), on blanchit les nœuds [data-frame-swap] en MICROTÂCHE (avant le
+      // paint) au lieu d'attendre la frame suivante. Nos propres écritures re-déclenchent
+      // l'observer → garde « some(...) » : si tout est déjà vide/stable, no-op.
+      const root = rootRef.current;
+      if (root) {
+        const mo = new MutationObserver(() => {
+          if (ctl.done) return;
+          const dirty = frameNodes.some(
+            (f) => isSwapNode(f) && (f.nodeValue ?? "") !== "",
+          );
+          const grew = collectTextNodes(root).length !== frameNodes.length;
+          if (!dirty && !grew) return;
+          refresh(false);
+          frameNodes.forEach((f) => {
+            if (isSwapNode(f)) writeNode(f, 0);
+          });
+        });
+        mo.observe(root, { childList: true, characterData: true, subtree: true });
+        ctl.mo = mo;
+      }
     };
 
     // DÉCRYPTAGE du texte (entrée) — partagé par onEnter ET la révélation projet.
@@ -626,7 +658,10 @@ export function SiteFrame({
             ease: soft ? "power2.out" : "power2.in",
             onUpdate: () => {
               mainNodes.forEach((f) => (soft ? writeNode(f, p.d) : decodeNode(f, p.d)));
-              frameNodes.forEach((f) => decodeNode(f, p.d));
+              // Titre / compteur / nav : ÉCRITURE manuscrite ; stables : chiffres.
+              frameNodes.forEach((f) =>
+                isSwapNode(f) ? writeNode(f, p.d) : decodeNode(f, p.d),
+              );
               hudNodes.forEach((f) => decodeNode(f, p.d)); // HUD = même horloge
             },
             onComplete: () => {
@@ -719,6 +754,8 @@ export function SiteFrame({
       const p = { s: 0 };
       // SORTIE : le CADRE reste TOUJOURS en Matrix (jamais vidé) ; seul le CONTENU
       // de page Contact s'EFFACE (manuscrit).
+      const frameSwap = frameNodes.filter(isSwapNode);
+      const frameStatic = frameNodes.filter((f) => !isSwapNode(f));
       tl.to(
         p,
         {
@@ -727,8 +764,10 @@ export function SiteFrame({
           ease: "none",
           onUpdate: () => {
             mainNodes.forEach((f) => (soft ? eraseNode(f, p.s) : scrambleNode(f)));
-            frameNodes.forEach((f) => scrambleNode(f));
-            hudExitNodes.forEach((f) => scrambleNode(f)); // le grand numéro se brouille aussi
+            frameStatic.forEach((f) => scrambleNode(f)); // stables : chiffres qui roulent
+            // Titre / compteur / nav : EFFACÉS en manuscrit (réécrits à l'arrivée).
+            frameSwap.forEach((f) => eraseNode(f, Math.min(1, p.s / 0.4)));
+            hudExitNodes.forEach((f) => scrambleNode(f)); // le grand numéro roule aussi
           },
         },
         0,
@@ -877,12 +916,20 @@ export function SiteFrame({
         className="absolute bottom-12 right-5 size-4 border-b border-r border-white md:bottom-14 md:right-8"
       />
 
-      <div className="absolute left-5 top-20 text-[11px] tracking-[0.14em] md:left-8 md:top-5 md:text-xs">
+      {/* data-frame-swap : texte qui CHANGE selon la page → effacé/réécrit en
+          MANUSCRIT pendant la transition (les textes stables restent immobiles). */}
+      <div
+        data-frame-swap
+        className="absolute left-5 top-20 text-[11px] tracking-[0.14em] md:left-8 md:top-5 md:text-xs"
+      >
         {meta.title}
       </div>
 
       {typeof meta.count === "number" && meta.count > 0 && (
-        <div className="absolute right-5 top-20 text-right text-[11px] tracking-[0.14em] tabular-nums md:right-8 md:top-5 md:text-xs">
+        <div
+          data-frame-swap
+          className="absolute right-5 top-20 text-right text-[11px] tracking-[0.14em] tabular-nums md:right-8 md:top-5 md:text-xs"
+        >
           {typeof meta.current === "number" ? (
             `(${pad2(meta.current)} / ${pad2(meta.count)})`
           ) : (
@@ -917,7 +964,10 @@ export function SiteFrame({
 
       {/* Navigation projet — fait partie du cadre (préc. / position / suiv.). */}
       {meta.nav && (
-        <div className="project-nav absolute bottom-16 left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-4 lg:gap-3 lg:text-xs">
+        <div
+          data-frame-swap
+          className="project-nav absolute bottom-16 left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-4 lg:gap-3 lg:text-xs"
+        >
           {/* Précédent — bouton rond (mobile/tablette) · flèche + titre (desktop) */}
           {meta.nav.prevSlug ? (
             <Link

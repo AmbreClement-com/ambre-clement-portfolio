@@ -12,19 +12,21 @@ import { useFrameMeta } from "@/components/public/frame-context";
 type NavCategory = { name: string; slug: string; type?: string };
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const RADIUS = 28; // = rounded-[1.75rem]
+const RADIUS = 8; // = rounded-lg (rectangle aux coins finement arrondis)
 
 // Le « cache » opaque de la pilule (calque plein dont on anime l'opacité 0→1→0)
 // est géré dans run()/reveal() via coverRef → 100 % opaque garanti au palier.
 
-// --- Décryptage (scramble) du titre -----------------------------------------
-const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$*<>?/+=-§¤";
-const rnd = () => GLYPHS[(Math.random() * GLYPHS.length) | 0];
+// --- Morph du titre (manuscrit + compteur) -----------------------------------
+// L'effet Matrix sur les LETTRES a été retiré : seuls les CHIFFRES « roulent ».
+const DIGITS = "0123456789";
+const rnd = () => DIGITS[(Math.random() * DIGITS.length) | 0];
 /**
- * Morphe `from` → `to` en Matrix : la LONGUEUR affichée interpole de l'un à l'autre
- * (écriture/effacement manuscrit des caractères en trop/manquants, sur les ~70 %
- * premiers) ET le texte se fige L→R dans les ~25 % finaux. Si `from`/`to` n'ont pas
- * le même nombre de caractères, on ajoute/retire donc les caractères en douceur.
+ * Morphe `from` → `to` façon MANUSCRIT : la LONGUEUR affichée interpole de l'un à
+ * l'autre (écriture/effacement des caractères en trop/manquants, sur les ~70 %
+ * premiers) puis le texte se réécrit L→R dans les ~25 % finaux. Les lettres
+ * restent LISIBLES (ancien texte conservé jusqu'à sa réécriture) ; seuls les
+ * chiffres roulent aléatoirement avant de se poser.
  */
 function renderScramble(el: HTMLElement, from: string, to: string, p: number) {
   const lenFrom = from.length;
@@ -38,7 +40,10 @@ function renderScramble(el: HTMLElement, from: string, to: string, p: number) {
       continue;
     }
     const frac = lenTo > 1 ? i / (lenTo - 1) : 0;
-    out += ch !== undefined && p >= 0.75 + 0.22 * frac ? ch : rnd();
+    const resolved = ch !== undefined && p >= 0.75 + 0.22 * frac;
+    if (resolved) out += ch;
+    else if (ch !== undefined && ch >= "0" && ch <= "9") out += rnd();
+    else out += from[i] ?? ch ?? ""; // lettre : l'ancien texte reste lisible
   }
   el.textContent = out;
 }
@@ -599,17 +604,17 @@ export function SiteHeader({
         ref={pillRef}
         onMouseEnter={canHover ? () => setOpen(true) : undefined}
         onMouseLeave={canHover ? () => setOpen(false) : undefined}
-        // Tap N'IMPORTE OÙ sur la pilule → OUVRE le menu (pratique au doigt). Les liens
-        // du menu naviguent normalement et les boutons logo/points gardent leur bascule
-        // (fermer reste possible) ; clic ignoré pendant une transition de page.
+        // Tap N'IMPORTE OÙ sur la barre → BASCULE le menu (rappuyer dessus le ferme,
+        // pratique au doigt). Les liens du menu naviguent normalement et les boutons
+        // logo/points ont leur propre bascule ; clic ignoré pendant une transition.
         onClick={(e) => {
           if (animating.current) return;
           const t = e.target as HTMLElement;
           if (t.closest("a") || t.closest("[data-nav-toggle]")) return;
-          setOpen(true);
+          setOpen((o) => !o);
         }}
         className={cn(
-          "glass-refract pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[1.75rem] transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
+          "glass-refract pointer-events-auto relative flex w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-lg transition-all duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]",
           dark
             ? open
               ? "bg-black/60 shadow-[0_18px_50px_-10px_rgba(0,0,0,0.55)] ring-1 ring-white/25"
@@ -664,7 +669,7 @@ export function SiteHeader({
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-            className="cursor-pointer text-sm font-semibold uppercase tracking-[0.18em]"
+            className="type-heading cursor-pointer text-sm font-semibold uppercase tracking-[0.18em]"
           >
             {siteName}
           </button>
@@ -721,7 +726,7 @@ export function SiteHeader({
                           <span className="flex items-baseline gap-3">
                             <span
                               className={cn(
-                                "text-[1.7rem] font-light uppercase leading-tight tracking-wide transition-all duration-300 group-hover:translate-x-1",
+                                "type-heading text-[1.7rem] font-light uppercase leading-tight tracking-wide transition-all duration-300 group-hover:translate-x-1",
                                 active ? itemActive : itemIdle,
                               )}
                             >

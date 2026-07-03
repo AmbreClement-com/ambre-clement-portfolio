@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +19,7 @@ import {
 } from "@/components/public/project-transition";
 import { ProjectTransitionMount } from "@/components/public/project-transition-mount";
 import { pageZoom } from "@/lib/page-zoom";
+import { HudInner } from "@/components/public/site-frame";
 import type { Photo, Project } from "@/server/db/schema";
 
 // useLayoutEffect SSR-safe.
@@ -543,51 +543,38 @@ export function ProjectsCinema({
           </div>
         </div>
 
-        {/* Métadonnées (droite) */}
+        {/* Métadonnées (droite) — MÊME composant + MÊMES classes que le HUD du cadre
+            (pages projet) : le HUD garde un style unique sur tout le site. */}
         <div
           data-cinema-hud
-          className={`pointer-events-none absolute right-5 top-1/2 hidden -translate-y-1/2 flex-col items-end gap-6 text-right md:flex md:right-8 ${opening || returning ? "opacity-0" : ""}`}
+          className={`pointer-events-none absolute right-5 top-1/2 z-[110] hidden -translate-y-1/2 select-none flex-col items-end gap-5 text-right font-mono font-bold uppercase text-white mix-blend-difference md:flex md:right-8 ${opening || returning ? "opacity-0" : ""}`}
         >
-          <div className="font-mono text-6xl font-light leading-none tabular-nums text-neutral-900">
-            {pad(active + 1)}
-          </div>
-          <Meta label="Projet">{current.title}</Meta>
-          {current.location && <Meta label="Lieu">{current.location}</Meta>}
-          {y && <Meta label="Année">{y}</Meta>}
+          <HudInner
+            info={{
+              title: current.title,
+              location: current.location,
+              year: y,
+              index: active + 1,
+              total: n,
+            }}
+          />
         </div>
 
-        {/* Métadonnées MOBILE — MÊME STYLE que le HUD desktop (grand n° + Projet/Lieu/
-            Année, aligné à droite), en inversion de couleur (mix-blend) pour être lisible
-            par-dessus la photo.
-            Collé à DROITE (`right-5`) comme le desktop. Lisible partout grâce au `bg-white`
-            du conteneur (cf. plus haut) : noir sur le blanc, inversé sur la photo.
-            `mix-blend` + `z-[110]` sur le MÊME élément (sinon le z-index l'isole et le blend
-            ne voit plus la photo). */}
+        {/* Métadonnées MOBILE — même HUD partagé (HudInner), en mix-blend pour rester
+            lisible par-dessus la photo (cf. bg-white du conteneur + z-[110]). */}
         <div
           data-cinema-hud
-          className={`pointer-events-none absolute right-5 top-1/2 z-[110] flex max-w-[80vw] -translate-y-1/2 flex-col items-end gap-3 text-right font-mono uppercase text-white mix-blend-difference md:hidden ${opening || returning ? "opacity-0" : ""}`}
+          className={`pointer-events-none absolute right-5 top-1/2 z-[110] flex max-w-[80vw] -translate-y-1/2 select-none flex-col items-end gap-5 text-right font-mono font-bold uppercase text-white mix-blend-difference md:hidden ${opening || returning ? "opacity-0" : ""}`}
         >
-          <div className="text-5xl font-normal leading-none tabular-nums">
-            {pad(active + 1)}
-          </div>
-          <div>
-            <div className="text-[10px] tracking-[0.2em] opacity-60">Projet</div>
-            <div className="mt-0.5 text-xs font-semibold tracking-[0.15em]">{current.title}</div>
-          </div>
-          {current.location && (
-            <div>
-              <div className="text-[10px] font-semibold tracking-[0.2em] opacity-90">Lieu</div>
-              <div className="mt-0.5 text-xs font-semibold tracking-[0.15em]">
-                {current.location}
-              </div>
-            </div>
-          )}
-          {y && (
-            <div>
-              <div className="text-[10px] font-semibold tracking-[0.2em] opacity-90">Année</div>
-              <div className="mt-0.5 text-xs font-semibold tracking-[0.15em]">{y}</div>
-            </div>
-          )}
+          <HudInner
+            info={{
+              title: current.title,
+              location: current.location,
+              year: y,
+              index: active + 1,
+              total: n,
+            }}
+          />
         </div>
 
         {/* Bande de vignettes de navigation (mobile) — en bas. DÉFILE avec le scroll pour
@@ -636,16 +623,4 @@ export function ProjectsCinema({
   );
 }
 
-function Meta({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400">
-        {label}
-      </div>
-      <div className="mt-0.5 font-mono text-xs uppercase tracking-[0.15em] text-neutral-800">
-        {children}
-      </div>
-    </div>
-  );
-}
 

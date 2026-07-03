@@ -155,6 +155,11 @@ export const siteSettings = pgTable("site_settings", {
   linkedinUrl: text("linkedin_url"), // legacy — repris dans `socials`
   // Nom du site (navbar, loader, titres d'onglet, manifest). NULL → « Ambre Clément ».
   siteName: text("site_name"),
+  // Thème typographique du site public (id du registre lib/typography-themes).
+  // NULL → thème par défaut (« signature »).
+  typography: text("typography"),
+  // Graisse globale du thème : "light" | "bold" — NULL = normale.
+  typographyWeight: text("typography_weight"),
   // Domaine affiché dans le cadre (© 2026 xxx). NULL → dérivé de SITE_URL.
   frameDomain: text("frame_domain"),
   email: text("email"),

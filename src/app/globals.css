@@ -245,6 +245,63 @@ html.ac-hide-scrollbar::-webkit-scrollbar {
   display: none; /* WebKit/Blink */
 }
 
+/* Thème TYPOGRAPHIQUE (réglage admin) : le wrapper [data-typo] (display:contents)
+   applique la police de TEXTE à TOUT le site public ; les titres (h1-h3 et tout
+   élément .type-heading) prennent la police de TITRES ; les éléments `font-mono`
+   (cadre, HUD, compteurs, animations) suivent AUSSI le thème via --typo-mono
+   (= police de texte, sauf thème Brutaliste qui garde Space Mono). Le back-office
+   (/admin) n'est PAS dans ce wrapper → typo shadcn de base. */
+[data-typo] {
+  font-family: var(--typo-body);
+}
+[data-typo] :is(h1, h2, h3, .type-heading) {
+  font-family: var(--typo-heading);
+}
+[data-typo] .font-mono {
+  font-family: var(--typo-mono);
+}
+
+/* Graisse GLOBALE du thème (réglage admin « Fin / Normale / Épaisse ») : chaque
+   palier de graisse est décalé de DEUX crans (effet bien visible), texte par défaut compris. Les polices
+   variables couvrent tout l'axe ; pour les statiques, le navigateur prend la
+   graisse la plus proche disponible. */
+[data-typo][data-typo-weight="light"] {
+  font-weight: 200;
+}
+[data-typo][data-typo-weight="light"] :is(.font-light) {
+  font-weight: 100;
+}
+[data-typo][data-typo-weight="light"] :is(.font-normal) {
+  font-weight: 200;
+}
+[data-typo][data-typo-weight="light"] :is(.font-medium) {
+  font-weight: 300;
+}
+[data-typo][data-typo-weight="light"] :is(.font-semibold) {
+  font-weight: 400;
+}
+[data-typo][data-typo-weight="light"] :is(.font-bold) {
+  font-weight: 500;
+}
+[data-typo][data-typo-weight="bold"] {
+  font-weight: 600;
+}
+[data-typo][data-typo-weight="bold"] :is(.font-light) {
+  font-weight: 500;
+}
+[data-typo][data-typo-weight="bold"] :is(.font-normal) {
+  font-weight: 600;
+}
+[data-typo][data-typo-weight="bold"] :is(.font-medium) {
+  font-weight: 700;
+}
+[data-typo][data-typo-weight="bold"] :is(.font-semibold) {
+  font-weight: 800;
+}
+[data-typo][data-typo-weight="bold"] :is(.font-bold) {
+  font-weight: 900;
+}
+
 /* Cinémas (projets/tarifs) au TACTILE : snap NATIF du navigateur sur les marqueurs
    [data-cinema-snap] (un par slide). Le compositeur gère l'inertie + le recalage →
    soyeux, aucune lutte JS contre le momentum (contrairement à lenis.scrollTo). */

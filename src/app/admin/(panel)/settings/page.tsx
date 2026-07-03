@@ -18,7 +18,8 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import { User, Palette, Globe, Lock, Sparkles } from "lucide-react";
+import { User, Palette, Globe, Lock, Sparkles, Type } from "lucide-react";
+import { TypographySelector } from "@/components/admin/typography-selector";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,28 @@ export default async function AdminSettingsPage() {
               frameDomain: settings?.frameDomain?.trim() || siteDomain(),
               legalNotice: settings?.legalNotice ?? null,
             }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Typographie : thème de polices du site public */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Type className="size-4 text-primary" />
+            Typographie
+          </CardTitle>
+          <CardDescription>
+            La voix du site : une police pour les titres, une pour le texte.
+            Cliquez un thème pour l&apos;appliquer immédiatement à TOUT le
+            portfolio — cadre, animations et compteurs compris (survolez pour
+            savoir pourquoi la combinaison fonctionne).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TypographySelector
+            current={settings?.typography ?? null}
+            currentWeight={settings?.typographyWeight ?? null}
           />
         </CardContent>
       </Card>

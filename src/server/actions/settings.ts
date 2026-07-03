@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { siteSettings, users } from "@/server/db/schema";
 import { settingsInput, animationsInput, contactInput } from "@/lib/validators";
+import { isTypographyId, DEFAULT_TYPOGRAPHY } from "@/lib/typography-themes";
 import { isThemeKey } from "@/lib/themes";
 import { DEFAULT_ANIMATIONS } from "@/lib/animations";
 import { requireAdmin } from "./guard";
@@ -50,6 +51,35 @@ export async function updateSettings(raw: unknown) {
     .onConflictDoUpdate({ target: siteSettings.id, set });
 
   revalidatePath("/", "layout"); // navbar (nom) + cadre (domaine) + mentions
+}
+
+/** Carte « Typographie » : thème typographique du site public (id du registre). */
+export async function updateTypography(themeId: string) {
+  await requireAdmin();
+  if (!isTypographyId(themeId)) throw new Error("Thème typographique invalide");
+  // Le thème par défaut est stocké NULL → aucun wrapper côté public (zéro coût).
+  const typography = themeId === DEFAULT_TYPOGRAPHY ? null : themeId;
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, typography, defaultSeo: {} })
+    .onConflictDoUpdate({ target: siteSettings.id, set: { typography } });
+  revalidatePath("/", "layout"); // tout le site public change de voix
+}
+
+/** Graisse globale du thème typographique : « light » / « normal » / « bold ». */
+export async function updateTypographyWeight(weight: string) {
+  await requireAdmin();
+  if (!["light", "normal", "bold"].includes(weight))
+    throw new Error("Graisse invalide");
+  const typographyWeight = weight === "normal" ? null : weight;
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, typographyWeight, defaultSeo: {} })
+    .onConflictDoUpdate({
+      target: siteSettings.id,
+      set: { typographyWeight },
+    });
+  revalidatePath("/", "layout");
 }
 
 /** Carte « Animations » : on/off + intensité + vitesses par effet. */

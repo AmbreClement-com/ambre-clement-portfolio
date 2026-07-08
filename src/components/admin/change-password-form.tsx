@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { changePassword } from "@/server/actions/account";
+import { passwordIssue, PASSWORD_MIN } from "@/lib/validators";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -14,10 +15,15 @@ export function ChangePasswordForm() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
 
+  // Validation en direct : la raison du refus est visible AVANT de soumettre.
+  const nextIssue = next ? passwordIssue(next) : null;
+  const mismatch = confirm.length > 0 && next !== confirm;
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (next.length < 8) {
-      toast.error("Le nouveau mot de passe doit faire au moins 8 caractères.");
+    const issue = passwordIssue(next);
+    if (issue) {
+      toast.error(issue);
       return;
     }
     if (next !== confirm) {
@@ -63,12 +69,18 @@ export function ChangePasswordForm() {
           id="next"
           type="password"
           autoComplete="new-password"
-          minLength={8}
+          minLength={PASSWORD_MIN}
           value={next}
           onChange={(e) => setNext(e.target.value)}
           required
         />
-        <p className="text-xs text-muted-foreground">8 caractères minimum.</p>
+        {nextIssue ? (
+          <p className="text-xs text-destructive">{nextIssue}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {next ? "✓ Mot de passe valide." : `${PASSWORD_MIN} caractères minimum.`}
+          </p>
+        )}
       </div>
       <div className="grid gap-2">
         <Label htmlFor="confirm">Confirmer le nouveau mot de passe</Label>
@@ -76,11 +88,16 @@ export function ChangePasswordForm() {
           id="confirm"
           type="password"
           autoComplete="new-password"
-          minLength={8}
+          minLength={PASSWORD_MIN}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           required
         />
+        {mismatch && (
+          <p className="text-xs text-destructive">
+            Le nouveau mot de passe et sa confirmation sont différents.
+          </p>
+        )}
       </div>
       <div>
         <Button type="submit" disabled={pending}>

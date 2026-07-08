@@ -35,7 +35,9 @@ export async function changePassword(
   raw: unknown,
 ): Promise<{ ok: true } | { error: string }> {
   const sessionUser = await requireAdmin();
-  const { currentPassword, newPassword } = changePasswordInput.parse(raw);
+  const parsed = changePasswordInput.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { currentPassword, newPassword } = parsed.data;
 
   const email = sessionUser.email;
   if (!email) return { error: "Votre session a expiré. Reconnectez-vous." };

@@ -93,9 +93,30 @@ export const profileInput = z.object({
   lastName: z.string().max(60).optional().or(z.literal("")),
 });
 
+/** Règles du mot de passe — UNIQUE source de vérité (client + serveur). */
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 200;
+
+export const passwordSchema = z
+  .string()
+  .min(
+    PASSWORD_MIN,
+    `Le mot de passe doit contenir au moins ${PASSWORD_MIN} caractères.`,
+  )
+  .max(
+    PASSWORD_MAX,
+    `Le mot de passe ne peut pas dépasser ${PASSWORD_MAX} caractères.`,
+  );
+
+/** Première raison de refus d'un mot de passe, ou null s'il est accepté. */
+export function passwordIssue(password: string): string | null {
+  const res = passwordSchema.safeParse(password);
+  return res.success ? null : res.error.issues[0].message;
+}
+
 export const changePasswordInput = z.object({
   currentPassword: z.string().min(1, "Mot de passe actuel requis"),
-  newPassword: z.string().min(8, "8 caractères minimum"),
+  newPassword: passwordSchema,
 });
 
 /** Helper : slug SEO à partir d'un titre. */

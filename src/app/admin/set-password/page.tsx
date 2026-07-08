@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
+import { inviteExpired } from "@/server/invites";
 import { SetPasswordForm } from "@/components/admin/set-password-form";
 
 export const metadata = { title: "Activer mon compte", robots: { index: false } };
@@ -13,11 +14,13 @@ export default async function SetPasswordPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token } = await searchParams;
-  const user = token
+  const found = token
     ? await db.query.users
         .findFirst({ where: eq(users.inviteToken, token) })
         .catch(() => null)
     : null;
+  // Lien expiré = même écran que lien invalide (l'action serveur re-vérifie).
+  const user = found && !inviteExpired(found.invitedAt) ? found : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
@@ -39,8 +42,9 @@ export default async function SetPasswordPage({
               Lien invalide
             </h1>
             <p className="mb-6 text-center text-sm text-muted-foreground">
-              Ce lien d&apos;invitation est invalide ou a déjà été utilisé.
-              Demandez à un administrateur de vous en générer un nouveau.
+              Ce lien d&apos;invitation est invalide, expiré ou a déjà été
+              utilisé. Demandez à un administrateur de vous en générer un
+              nouveau.
             </p>
             <p className="text-center text-sm">
               <Link href="/admin/login" className="underline">

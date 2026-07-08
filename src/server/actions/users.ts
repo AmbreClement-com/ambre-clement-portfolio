@@ -8,7 +8,9 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { fullName } from "@/lib/format";
-import { requireAdmin, requireAdminRole } from "./guard";
+import { passwordSchema } from "@/lib/validators";
+import { INVITE_TTL_DAYS, inviteExpired } from "@/server/invites";
+import { requireAdminRole } from "./guard";
 
 const ROLES = ["admin", "editor"] as const;
 
@@ -72,7 +74,11 @@ export async function regenerateInvite(id: string) {
     return { error: "Ce compte est déjà activé : aucun lien n'est nécessaire." };
   }
   const inviteToken = newToken();
-  await db.update(users).set({ inviteToken }).where(eq(users.id, id));
+  // invitedAt rafraîchi : le lien régénéré repart pour une validité complète.
+  await db
+    .update(users)
+    .set({ inviteToken, invitedAt: new Date() })
+    .where(eq(users.id, id));
   revalidatePath("/admin/settings/users");
   return { inviteToken };
 }
@@ -126,34 +132,28 @@ export async function deleteUser(
   return { ok: true };
 }
 
-/** Profil de l'utilisateur connecté (prénom/nom). */
-export async function updateMyProfile(raw: unknown) {
-  const me = await requireAdmin();
-  if (!me.id) throw new Error("Votre session a expiré. Reconnectez-vous.");
-  const { firstName, lastName } = z
-    .object({
-      firstName: z.string().trim().max(60).optional(),
-      lastName: z.string().trim().max(60).optional(),
-    })
-    .parse(raw);
-  const name = fullName(firstName, lastName);
-  await db
-    .update(users)
-    .set({ firstName: firstName || null, lastName: lastName || null, name })
-    .where(eq(users.id, me.id));
-  revalidatePath("/admin/settings");
-}
-
 const setPwdSchema = z.object({
-  token: z.string().min(10),
-  password: z.string().min(8, "8 caractères minimum").max(200),
+  token: z.string().min(10, "Ce lien d'invitation est incomplet."),
+  password: passwordSchema,
 });
 
 /** Définition du mot de passe via le jeton d'invitation (PAS d'auth : le jeton fait foi). */
 export async function setPasswordFromInvite(
   raw: unknown,
 ): Promise<{ email: string } | { error: string }> {
-  const { token, password } = setPwdSchema.parse(raw);
+  // safeParse + return : en production, Next.js masque les messages des
+  // erreurs `throw` des Server Actions — l'utilisateur ne saurait pas pourquoi.
+  const parsed = setPwdSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return {
+      error:
+        issue.path[0] === "password"
+          ? issue.message
+          : "Ce lien d'invitation est invalide ou incomplet. Demandez-en un nouveau à un administrateur.",
+    };
+  }
+  const { token, password } = parsed.data;
   const target = await db.query.users.findFirst({
     where: and(eq(users.inviteToken, token), ne(users.email, "")),
   });
@@ -161,6 +161,10 @@ export async function setPasswordFromInvite(
     return {
       error:
         "Ce lien d'invitation est invalide ou a déjà été utilisé. Demandez-en un nouveau à un administrateur.",
+    };
+  if (inviteExpired(target.invitedAt))
+    return {
+      error: `Ce lien d'invitation a expiré (validité ${INVITE_TTL_DAYS} jours). Demandez à un administrateur de le régénérer.`,
     };
   const passwordHash = await hash(password);
   await db

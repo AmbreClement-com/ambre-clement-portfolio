@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { setPasswordFromInvite } from "@/server/actions/users";
+import { passwordIssue, PASSWORD_MIN } from "@/lib/validators";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -16,11 +17,16 @@ export function SetPasswordForm({ token }: { token: string }) {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Validation en direct : la raison du refus est visible AVANT de soumettre.
+  const pwdIssue = pwd ? passwordIssue(pwd) : null;
+  const mismatch = confirm.length > 0 && pwd !== confirm;
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (pwd.length < 8) {
-      setError("8 caractères minimum.");
+    const issue = passwordIssue(pwd);
+    if (issue) {
+      setError(issue);
       return;
     }
     if (pwd !== confirm) {
@@ -55,9 +61,15 @@ export function SetPasswordForm({ token }: { token: string }) {
           onChange={(e) => setPwd(e.target.value)}
           required
           autoComplete="new-password"
-          minLength={8}
+          minLength={PASSWORD_MIN}
         />
-        <p className="text-xs text-muted-foreground">8 caractères minimum.</p>
+        {pwdIssue ? (
+          <p className="text-xs text-destructive">{pwdIssue}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {pwd ? "✓ Mot de passe valide." : `${PASSWORD_MIN} caractères minimum.`}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="confirm">Confirmer le mot de passe</Label>
@@ -68,8 +80,13 @@ export function SetPasswordForm({ token }: { token: string }) {
           onChange={(e) => setConfirm(e.target.value)}
           required
           autoComplete="new-password"
-          minLength={8}
+          minLength={PASSWORD_MIN}
         />
+        {mismatch && (
+          <p className="text-xs text-destructive">
+            Les deux mots de passe ne correspondent pas.
+          </p>
+        )}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={pending}>

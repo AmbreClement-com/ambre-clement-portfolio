@@ -84,7 +84,7 @@ export function computeAlerts(d: AnalyticsData): DashboardAlert[] {
       key: "errors",
       tone: "bad",
       icon: "bug",
-      text: `${d.errors.count} erreur${d.errors.count > 1 ? "s" : ""} JavaScript sur la période (${d.errors.sessions} session${d.errors.sessions > 1 ? "s" : ""} touchée${d.errors.sessions > 1 ? "s" : ""}) — détail dans « Santé du site ».`,
+      text: `${d.errors.count} erreur${d.errors.count > 1 ? "s" : ""} JavaScript sur la période (${d.errors.sessions} session${d.errors.sessions > 1 ? "s" : ""} touchée${d.errors.sessions > 1 ? "s" : ""}) — détail dans l'onglet « Système ».`,
     });
 
   return out;

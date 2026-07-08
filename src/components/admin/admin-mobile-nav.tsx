@@ -10,7 +10,6 @@ type NavProject = { id: string; title: string; categoryId: string | null };
 
 type Props = {
   role?: string;
-  isDev?: boolean;
   categories?: NavCategory[];
   projects?: NavProject[];
   tarifs?: { id: string; title: string }[];

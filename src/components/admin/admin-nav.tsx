@@ -8,12 +8,12 @@ import {
   Layers,
   Settings,
   Users,
-  Wrench,
   Images,
   FolderOpen,
   Tag,
   AtSign,
   ChevronRight,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -74,13 +74,11 @@ function Row({
 
 export function AdminNav({
   role,
-  isDev,
   categories = [],
   projects = [],
   tarifs = [],
 }: {
   role?: string;
-  isDev?: boolean;
   categories?: NavCategory[];
   projects?: NavProject[];
   tarifs?: { id: string; title: string }[];
@@ -235,6 +233,20 @@ export function AdminNav({
         Contact
       </Link>
 
+      {/* Système : santé technique (Web Vitals, base de données, services). */}
+      <Link
+        href="/admin/systeme"
+        className={itemClass(pathname === "/admin/systeme")}
+      >
+        <HeartPulse
+          className={cn(
+            "size-4",
+            pathname === "/admin/systeme" && "text-primary",
+          )}
+        />
+        Système
+      </Link>
+
       <Link
         href="/admin/settings"
         className={itemClass(pathname === "/admin/settings")}
@@ -263,20 +275,6 @@ export function AdminNav({
         </Link>
       )}
 
-      {isDev && role === "admin" && (
-        <Link
-          href="/admin/settings/dev"
-          className={itemClass(pathname.startsWith("/admin/settings/dev"))}
-        >
-          <Wrench
-            className={cn(
-              "size-4",
-              pathname.startsWith("/admin/settings/dev") && "text-primary",
-            )}
-          />
-          Développeur
-        </Link>
-      )}
     </nav>
   );
 }

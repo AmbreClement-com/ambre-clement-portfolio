@@ -9,17 +9,10 @@ export async function requireAdmin() {
   return session.user;
 }
 
-/** Garde renforcée : réservé au rôle "admin" (gestion des utilisateurs, outils dev). */
+/** Garde renforcée : réservé au rôle "admin" (gestion des utilisateurs). */
 export async function requireAdminRole() {
   const user = await requireAdmin();
   if (user.role !== "admin")
     throw new Error("Cette action est réservée aux administrateurs.");
   return user;
-}
-
-/** Outils développeur : interdits en production. */
-export function assertDev() {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Indisponible en production");
-  }
 }

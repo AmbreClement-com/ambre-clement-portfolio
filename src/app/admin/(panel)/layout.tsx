@@ -54,7 +54,6 @@ export default async function AdminLayout({
 
   const navProps = {
     role: session.user.role,
-    isDev: process.env.NODE_ENV !== "production",
     categories: cats.map((c) => ({ id: c.id, name: c.name, type: c.type })),
     projects: projs.map((p) => ({
       id: p.id,

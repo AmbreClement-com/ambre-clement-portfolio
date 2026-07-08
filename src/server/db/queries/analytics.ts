@@ -4,8 +4,8 @@ import { visits, events, projects } from "@/server/db/schema";
 
 const DAY = 86_400_000;
 
-export const ANALYTICS_RANGES = [7, 30, 90] as const;
-export type AnalyticsRange = (typeof ANALYTICS_RANGES)[number];
+const ANALYTICS_RANGES = [7, 30, 90] as const;
+type AnalyticsRange = (typeof ANALYTICS_RANGES)[number];
 
 function startOfDay(offsetDays = 0) {
   const d = new Date(Date.now() - offsetDays * DAY);

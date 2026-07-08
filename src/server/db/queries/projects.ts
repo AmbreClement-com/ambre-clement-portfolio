@@ -30,8 +30,6 @@ export async function getAllPricings() {
 export async function getNavCategories() {
   return db.select().from(categories).orderBy(asc(categories.displayOrder));
 }
-export const getCategories = getNavCategories;
-
 /** Catégories de type "projets" — pour le sélecteur du formulaire projet. */
 export async function getProjectCategories() {
   return db

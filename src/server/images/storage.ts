@@ -57,7 +57,7 @@ async function s3Client() {
   });
 }
 
-export function publicUrl(key: string) {
+function publicUrl(key: string) {
   // S3 : URL construite depuis la base publique. Blob : l'URL est renvoyée par
   // `put()` (domaine du store dynamique) → cette fonction n'est pas utilisée pour Blob.
   if (hasS3) return `${S3.publicBase}/${key}`;
@@ -115,29 +115,6 @@ export async function putObject(
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, body);
   return publicUrl(key);
-}
-
-export async function deleteObject(key: string): Promise<void> {
-  if (hasS3) {
-    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
-    const client = await s3Client();
-    await client.send(
-      new DeleteObjectCommand({ Bucket: S3.bucket!, Key: key }),
-    );
-    return;
-  }
-
-  if (hasBlob) {
-    // `del()` attend une URL → on retrouve le blob par son chemin exact.
-    const { list, del } = await import("@vercel/blob");
-    const { blobs } = await list({ prefix: key });
-    const exact = blobs.find((b) => b.pathname === key);
-    if (exact) await del(exact.url);
-    return;
-  }
-
-  const filePath = path.join(process.cwd(), "public", "uploads", key);
-  await fs.rm(filePath, { force: true });
 }
 
 /** Supprime toutes les déclinaisons d'une photo (original + variants). */

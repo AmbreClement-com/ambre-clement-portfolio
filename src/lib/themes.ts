@@ -159,7 +159,7 @@ export const THEMES = [
 
 export type ThemeKey = (typeof THEMES)[number]["key"];
 
-export const THEME_KEYS = THEMES.map((t) => t.key) as ThemeKey[];
+const THEME_KEYS = THEMES.map((t) => t.key) as ThemeKey[];
 
 export function isThemeKey(v: unknown): v is ThemeKey {
   return typeof v === "string" && (THEME_KEYS as string[]).includes(v);

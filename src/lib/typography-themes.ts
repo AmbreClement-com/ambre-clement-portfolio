@@ -296,15 +296,9 @@ export const TYPOGRAPHY_THEMES: TypographyTheme[] = [
   },
 ];
 
-export const TYPOGRAPHY_IDS = TYPOGRAPHY_THEMES.map((t) => t.id);
+const TYPOGRAPHY_IDS = TYPOGRAPHY_THEMES.map((t) => t.id);
 
 export function isTypographyId(v: unknown): v is string {
   return typeof v === "string" && TYPOGRAPHY_IDS.includes(v);
 }
 
-export function getTypographyTheme(id: string | null | undefined): TypographyTheme {
-  return (
-    TYPOGRAPHY_THEMES.find((t) => t.id === id) ??
-    TYPOGRAPHY_THEMES.find((t) => t.id === DEFAULT_TYPOGRAPHY)!
-  );
-}

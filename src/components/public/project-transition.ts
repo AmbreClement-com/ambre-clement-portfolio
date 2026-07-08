@@ -57,19 +57,6 @@ function rectOf(el: Element): Rect {
   return { left: r.left, top: r.top, width: r.width, height: r.height };
 }
 
-/** Rect tel qu'il apparaît une fois la page dézoomée (homothétie centre écran ×Z),
- *  exactement comme le shader/`<main>` rapetisse la page pendant la transition. */
-function dezoomRect(r: Rect): Rect {
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
-  return {
-    left: cx + (r.left - cx) * Z,
-    top: cy + (r.top - cy) * Z,
-    width: r.width * Z,
-    height: r.height * Z,
-  };
-}
-
 /** Le « 1er cadre » central (carré de la page dézoomée) = exactement la zone que le
  *  `SiteFrame` borde (inset `(1-Z)/2`, taille `Z×viewport`). La couverture le REMPLIT
  *  → dans le petit cadre on ne voit QUE la couverture (le liseré l'affleure 1px dehors). */
@@ -264,51 +251,6 @@ export function openProject(
   tl.call(
     () => {
       pending = { mode: "open", src, alt: img.alt, destContain: false };
-      navigate();
-    },
-    undefined,
-    0.92,
-  );
-}
-
-// ── RETOUR : galerie → cinéma ───────────────────────────────────────────────
-export function closeProject(slug: string, navigate: () => void, speed = 1) {
-  if (reduced()) {
-    navigate();
-    return;
-  }
-  // 1re photo de la galerie = la couverture (élément partagé).
-  const plane = document.querySelector<HTMLElement>("[data-plane]");
-  const planeImg = plane?.querySelector("img") as HTMLImageElement | null;
-  if (!plane || !planeImg) {
-    navigate();
-    return;
-  }
-  projectSpeed = speed;
-  const start = rectOf(plane);
-  const src = planeImg.currentSrc || planeImg.src;
-  buildOverlay(start, src, planeImg.alt, false); // plane galerie = cover
-  returnSlug = slug; // le cinéma se recentrera sur ce projet
-  window.dispatchEvent(new Event("ac:page-exit"));
-
-  const dz = dezoomRect(start);
-  const tl = gsap.timeline();
-  tl.timeScale(speed); // vitesse globale (réglage back-office)
-  tl.to(
-    overlay,
-    {
-      x: dz.left,
-      y: dz.top,
-      width: dz.width,
-      height: dz.height,
-      duration: 0.72,
-      ease: "power3.inOut",
-    },
-    0,
-  );
-  tl.call(
-    () => {
-      pending = { mode: "close", src, alt: planeImg.alt, destContain: true };
       navigate();
     },
     undefined,

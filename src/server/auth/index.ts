@@ -13,7 +13,8 @@ const credentialsSchema = z.object({
   password: z.string().min(8),
 });
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+// signIn/signOut ne sont pas exportés : le client passe par next-auth/react.
+export const { handlers, auth } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({

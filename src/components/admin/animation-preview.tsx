@@ -258,13 +258,55 @@ export function AnimationPreview({
   enabled,
   intensity,
 }: {
-  kind: "cursor" | "photoHover" | "scrollWave";
+  kind: "cursor" | "photoHover" | "photoDim" | "scrollWave";
   enabled: boolean;
   intensity: number;
 }) {
   if (kind === "cursor")
     return <CursorPreview enabled={enabled} intensity={intensity} />;
+  if (kind === "photoDim")
+    return <HoverDimPreview enabled={enabled} intensity={intensity} />;
   return <DeformPreview mode={kind} enabled={enabled} intensity={intensity} />;
+}
+
+/** Aperçu du survol : mini-grille de vignettes — celle sous la souris reste
+ *  nette, les autres s'estompent (mêmes valeurs que la galerie publique). */
+function HoverDimPreview({
+  enabled,
+  intensity,
+}: {
+  enabled: boolean;
+  intensity: number;
+}) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const dimAlpha = enabled ? Math.max(0.05, 1 - 0.55 * (intensity / 100)) : 1;
+  const tiles = [
+    "linear-gradient(135deg,#c9a27a,#8a6a4a)",
+    "linear-gradient(135deg,#6f8bb0,#44597a)",
+    "linear-gradient(135deg,#b07a9c,#7a4e6b)",
+    "linear-gradient(135deg,#7aa88a,#4c7059)",
+  ];
+  return (
+    <div className="relative size-32 shrink-0 overflow-hidden rounded-md bg-neutral-200">
+      <div className="grid size-full grid-cols-2 gap-1 p-1">
+        {tiles.map((bg, i) => (
+          <div
+            key={i}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
+            className="rounded-sm transition-opacity duration-[400ms] ease-in-out"
+            style={{
+              background: bg,
+              opacity: hovered !== null && hovered !== i ? dimAlpha : 1,
+            }}
+          />
+        ))}
+      </div>
+      <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-black/45 px-1.5 py-px text-[10px] font-medium text-white">
+        survole ici
+      </span>
+    </div>
+  );
 }
 
 /** Aperçu du curseur fluide. La simulation (lourde) n'est MONTÉE que quand la box

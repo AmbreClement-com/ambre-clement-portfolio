@@ -6,8 +6,14 @@
 export type AnimationSettings = {
   cursorEnabled: boolean;
   cursorIntensity: number;
+  /** Survol « flottement » : la surface de la photo se déforme et suit la souris.
+   *  EXCLUSIF avec photoDim (un seul effet de survol à la fois). */
   photoHoverEnabled: boolean;
   photoHoverIntensity: number;
+  /** Survol « mise en avant » : la photo survolée reste nette, les autres
+   *  s'estompent. EXCLUSIF avec photoHover. */
+  photoDimEnabled: boolean;
+  photoDimIntensity: number;
   scrollWaveEnabled: boolean;
   scrollWaveIntensity: number;
   /** Défilement infini des galeries (boucle transparente). Pas d'intensité. */
@@ -40,8 +46,11 @@ export const TRANSITION_SPEED_FACTOR: Record<
 export const DEFAULT_ANIMATIONS: AnimationSettings = {
   cursorEnabled: true,
   cursorIntensity: 100,
-  photoHoverEnabled: true,
+  // Par défaut : mise en avant (photoDim) active, flottement désactivé.
+  photoHoverEnabled: false,
   photoHoverIntensity: 100,
+  photoDimEnabled: true,
+  photoDimIntensity: 100,
   scrollWaveEnabled: true,
   scrollWaveIntensity: 100,
   infiniteScrollEnabled: true,
@@ -57,7 +66,12 @@ export const DEFAULT_ANIMATIONS: AnimationSettings = {
 export function resolveAnimations(
   a?: Partial<AnimationSettings> | null,
 ): AnimationSettings {
-  return { ...DEFAULT_ANIMATIONS, ...(a ?? {}) };
+  const out = { ...DEFAULT_ANIMATIONS, ...(a ?? {}) };
+  // Les deux effets de survol sont exclusifs. Si un réglage enregistré avant
+  // l'arrivée de la « mise en avant » a encore les deux actifs, elle gagne
+  // (c'est le comportement en place sur le site).
+  if (out.photoDimEnabled && out.photoHoverEnabled) out.photoHoverEnabled = false;
+  return out;
 }
 
 /**
@@ -71,9 +85,14 @@ export const ANIMATION_INFO = [
     help: "Un halo de fumée suit la souris et inverse les couleurs sous lui. Bien visible sur la page Contact, très discret ailleurs.",
   },
   {
+    key: "photoDim",
+    label: "Survol : mise en avant",
+    help: "Au survol d'une photo de galerie, elle reste nette pendant que toutes les autres s'estompent doucement. L'intensité règle la force de l'estompage. Activer cet effet désactive le flottement.",
+  },
+  {
     key: "photoHover",
-    label: "Survol des photos",
-    help: "Au survol d'une photo de galerie, sa surface se déforme légèrement et suit la souris, comme une matière vivante.",
+    label: "Survol : flottement",
+    help: "Au survol d'une photo de galerie, sa surface se déforme légèrement et suit la souris, comme une matière vivante. Activer cet effet désactive la mise en avant.",
   },
   {
     key: "scrollWave",

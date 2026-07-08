@@ -128,6 +128,8 @@ export default async function ProjectPage({ params }: Params) {
           emptyLabel="Cette galerie sera bientôt en ligne."
           hoverEnabled={anims.photoHoverEnabled}
           hoverIntensity={anims.photoHoverIntensity}
+          dimEnabled={anims.photoDimEnabled}
+          dimIntensity={anims.photoDimIntensity}
           scrollEnabled={anims.scrollWaveEnabled}
           scrollIntensity={anims.scrollWaveIntensity}
           infiniteEnabled={anims.infiniteScrollEnabled}

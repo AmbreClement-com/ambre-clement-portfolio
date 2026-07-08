@@ -63,9 +63,9 @@ void main() {
   // léger creux juste avant/après la crête → drapé de rideau (jolie vague)
   float drape = -d * exp(-d * d * 9.0) * 1.6;
   pos.z += (roll + drape) * uVelocity;
-  // Au survol (× uHover) : la SURFACE SUIT LA SOURIS — une bosse douce se
-  // soulève sous le curseur (la photo flotte vers la position de la souris) +
-  // légère inclinaison globale vers lui. Respire un peu (uTime).
+  // Survol « flottement » (× uHover) : la SURFACE SUIT LA SOURIS — une bosse
+  // douce se soulève sous le curseur + légère inclinaison globale vers lui.
+  // Respire un peu (uTime). Exclusif avec l'estompage (réglage back-office).
   vec2 m = vec2(uMouseX, uMouseY);
   float dm = distance(aVertexPosition.xy, m);
   float bulge = exp(-dm * dm * 1.1) * (1.0 + sin(uTime) * 0.12);
@@ -86,8 +86,11 @@ void main() {
 const FRAG = `
 precision mediump float;
 uniform sampler2D uSampler0;
+uniform float uAlpha;
 varying vec2 vTextureCoord;
-void main() { gl_FragColor = texture2D(uSampler0, vTextureCoord); }`;
+// × uAlpha sur TOUT le vecteur (rgb + a) : le contexte est en premultipliedAlpha,
+// c'est la façon correcte d'estomper sans liseré sur les bords.
+void main() { gl_FragColor = texture2D(uSampler0, vTextureCoord) * uAlpha; }`;
 
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
@@ -106,21 +109,29 @@ function periodCount(n: number, perRow: number): number {
 export function PhotosScroller({
   photos,
   emptyLabel = "Cette galerie sera bientôt en ligne.",
-  hoverEnabled = true,
+  hoverEnabled = false,
   hoverIntensity = 100,
+  dimEnabled = true,
+  dimIntensity = 100,
   scrollEnabled = true,
   scrollIntensity = 100,
   infiniteEnabled = true,
 }: {
   photos: Photo[];
   emptyLabel?: string;
+  /** Survol « flottement » (déformation qui suit la souris). Exclusif avec dim. */
   hoverEnabled?: boolean;
   hoverIntensity?: number;
+  /** Survol « mise en avant » (les autres photos s'estompent). Exclusif avec hover. */
+  dimEnabled?: boolean;
+  dimIntensity?: number;
   scrollEnabled?: boolean;
   scrollIntensity?: number;
   infiniteEnabled?: boolean;
 }) {
   const [index, setIndex] = useState<number | null>(null);
+  // Photo survolée (fallback DOM sans WebGL) — en WebGL c'est hoverRef qui pilote.
+  const [hovered, setHovered] = useState<number | null>(null);
   // Colonnes MAX selon la largeur (4 desktop / 2 mobile). Défaut 4 = sûr en SSR.
   const [maxCols, setMaxCols] = useState(4);
   const [webglOn, setWebglOn] = useState(false);
@@ -150,6 +161,13 @@ export function PhotosScroller({
   const lenisRef = useRef<Lenis | null>(null);
   const hoverRef = useRef<number | null>(null); // index du plan survolé
   const mouseRef = useRef({ x: 0, y: 0 }); // souris dans la photo survolée (-1..1)
+
+  // Survol « mise en avant » : la photo survolée reste pleine, TOUTES les
+  // autres s'estompent. L'intensité règle la force de l'estompage :
+  // 100 % → les autres descendent à 0.45 d'opacité (référence), 0 % → aucun effet.
+  const dimAlpha = dimEnabled
+    ? Math.max(0.05, 1 - 0.55 * (dimIntensity / 100))
+    : 1;
 
   // Colonnes : 4 desktop (≥1024) · 3 tablette (768-1023, cellules plus larges → photos
   // plus grandes) · 2 portrait large (480-767) · 1 téléphone (<480, photos en grand),
@@ -280,6 +298,8 @@ export function PhotosScroller({
               mouseX: { name: "uMouseX", type: "1f", value: 0 },
               mouseY: { name: "uMouseY", type: "1f", value: 0 },
               hover: { name: "uHover", type: "1f", value: 0 },
+              // opacité de la photo (estompage des non-survolées)
+              alpha: { name: "uAlpha", type: "1f", value: 1 },
               zoom: { name: "uZoom", type: "1f", value: 1 },
               offset: { name: "uOffset", type: "2f", value: [0, 0] },
             },
@@ -345,9 +365,15 @@ export function PhotosScroller({
           p.uniforms.zoom.value = pageZoom.value;
           // pan du zoom (ouverture projet : 1re photo recadrée au centre)
           p.uniforms.offset.value = pageOffset.value;
-          // déformation seulement au survol (× intensité) : lerp doux
-          const target = hoverRef.current === i ? hoverMax : 0;
-          p.uniforms.hover.value += (target - p.uniforms.hover.value) * 0.09;
+          // Flottement : déformation seulement au survol (× intensité), lerp doux.
+          const hTarget = hoverRef.current === i ? hoverMax : 0;
+          p.uniforms.hover.value += (hTarget - p.uniforms.hover.value) * 0.09;
+          // Mise en avant : la photo survolée reste à 1, TOUTES les autres
+          // s'estompent vers `dimAlpha`. Lerp doux ≈ le fondu 0,4 s de la référence.
+          const target =
+            hoverRef.current === null || hoverRef.current === i ? 1 : dimAlpha;
+          const a = p.uniforms.alpha.value as number;
+          p.uniforms.alpha.value = a + (target - a) * 0.1;
         });
       });
 
@@ -379,6 +405,7 @@ export function PhotosScroller({
     perRow,
     hoverEnabled,
     hoverIntensity,
+    dimAlpha,
     scrollEnabled,
     scrollIntensity,
     infiniteActive,
@@ -444,9 +471,13 @@ export function PhotosScroller({
                 onClick={() => setIndex(real)}
                 onMouseEnter={() => {
                   hoverRef.current = i;
+                  // le state ne sert qu'au fallback DOM (desktop sans WebGL) —
+                  // en WebGL on évite le re-rendu à chaque survol
+                  if (!webglOn) setHovered(i);
                 }}
                 onMouseLeave={() => {
                   if (hoverRef.current === i) hoverRef.current = null;
+                  setHovered((h) => (h === i ? null : h));
                 }}
                 onMouseMove={(e) => {
                   const r = e.currentTarget.getBoundingClientRect();
@@ -461,7 +492,18 @@ export function PhotosScroller({
                   // des photos est préservé (aucun recadrage). Desktop (lg, ≥1024) : grille à
                   // hauteur fixe 255px. Identique pour toutes les galeries (photo ET projet).
                   "block w-full max-w-full cursor-pointer overflow-hidden [&>picture]:block lg:h-[255px] lg:w-auto lg:[&>picture]:h-full",
+                  "transition-opacity duration-[400ms] ease-in-out",
                 )}
+                // Fallback DOM (desktop sans WebGL) : mêmes règles que les plans GL.
+                style={{
+                  opacity:
+                    !webglOn &&
+                    webglEnabled &&
+                    hovered !== null &&
+                    hovered !== i
+                      ? dimAlpha
+                      : undefined,
+                }}
               >
                 <ResponsiveImage
                   variants={photo.variants}

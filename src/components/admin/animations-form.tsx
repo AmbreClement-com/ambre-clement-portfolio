@@ -39,11 +39,33 @@ export function AnimationsForm({
     k: K,
     v: AnimationSettings[K],
   ) => setAnim((a) => ({ ...a, [k]: v }));
+
+  // Paires d'effets EXCLUSIFS : en activer un désactive l'autre (et inversement).
+  const EXCLUSIVE: Partial<
+    Record<keyof AnimationSettings, keyof AnimationSettings>
+  > = {
+    photoDimEnabled: "photoHoverEnabled",
+    photoHoverEnabled: "photoDimEnabled",
+  };
+  /** Interrupteur d'effet : applique l'exclusivité en plus de la valeur. */
+  const setEnabled = (k: keyof AnimationSettings, v: boolean) =>
+    setAnim((a) => {
+      const next = { ...a, [k]: v } as AnimationSettings;
+      const other = EXCLUSIVE[k];
+      if (v && other) (next as Record<string, unknown>)[other] = false;
+      return next;
+    });
+
   // Remet uniquement les champs donnés à leur valeur par défaut (reset par effet).
   const resetAnimFields = (...keys: (keyof AnimationSettings)[]) =>
     setAnim((a) => {
       const next = { ...a } as Record<string, unknown>;
-      for (const k of keys) next[k] = DEFAULT_ANIMATIONS[k];
+      for (const k of keys) {
+        next[k] = DEFAULT_ANIMATIONS[k];
+        // exclusivité : si le reset réactive un effet, son jumeau s'éteint
+        const other = EXCLUSIVE[k];
+        if (other && next[k] === true) next[other] = false;
+      }
       return next as AnimationSettings;
     });
 
@@ -131,7 +153,7 @@ export function AnimationsForm({
             className="flex flex-col gap-4 border-b border-border/60 pb-4 sm:flex-row sm:items-start"
           >
             <div className="grid min-w-0 flex-1 gap-2">
-              {header(info.label, enabled, (v) => setAnimField(enabledKey, v), enabledKey, intensityKey)}
+              {header(info.label, enabled, (v) => setEnabled(enabledKey, v), enabledKey, intensityKey)}
               <p className="text-xs text-muted-foreground">{info.help}</p>
               <div
                 className={`flex items-center gap-3 ${enabled ? "" : "pointer-events-none opacity-40"}`}

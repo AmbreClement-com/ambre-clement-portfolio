@@ -62,6 +62,8 @@ export const animationsInput = z.object({
     cursorIntensity: z.number().min(0).max(200),
     photoHoverEnabled: z.boolean(),
     photoHoverIntensity: z.number().min(0).max(200),
+    photoDimEnabled: z.boolean(),
+    photoDimIntensity: z.number().min(0).max(200),
     scrollWaveEnabled: z.boolean(),
     scrollWaveIntensity: z.number().min(0).max(200),
     infiniteScrollEnabled: z.boolean(),

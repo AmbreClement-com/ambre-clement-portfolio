@@ -34,6 +34,8 @@ export async function CategoryView({ category }: { category: Category }) {
           emptyLabel="Cette galerie sera bientôt en ligne."
           hoverEnabled={anims.photoHoverEnabled}
           hoverIntensity={anims.photoHoverIntensity}
+          dimEnabled={anims.photoDimEnabled}
+          dimIntensity={anims.photoDimIntensity}
           scrollEnabled={anims.scrollWaveEnabled}
           scrollIntensity={anims.scrollWaveIntensity}
           infiniteEnabled={anims.infiniteScrollEnabled}

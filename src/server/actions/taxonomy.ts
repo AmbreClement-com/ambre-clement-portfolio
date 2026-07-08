@@ -9,6 +9,7 @@ import { nextDisplayOrder, uniqueSlug } from "@/server/db/helpers";
 import { slugify, categoryInput, RESERVED_SLUGS } from "@/lib/validators";
 import type { CategoryType } from "@/server/db/schema";
 import { requireAdmin } from "./guard";
+import { deleteAllPhotos } from "./photos";
 
 /** Revalide toute la surface publique (la nav et les onglets en dépendent). */
 function revalidate() {
@@ -59,6 +60,11 @@ export async function setCategoryType(id: string, type: CategoryType) {
 
 export async function deleteCategory(id: string) {
   await requireAdmin();
+  // AVANT la suppression : les photos directes de l'onglet (galerie « photos »)
+  // partiraient par cascade DB en laissant leurs FICHIERS orphelins dans le
+  // stockage. On les supprime donc explicitement, fichiers compris. Les projets
+  // de l'onglet survivent (categoryId → set null), leurs photos aussi.
+  await deleteAllPhotos({ categoryId: id });
   await db.delete(categories).where(eq(categories.id, id));
   revalidate();
 }

@@ -10,6 +10,7 @@ import {
   jsonb,
   primaryKey,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { DEFAULT_ANIMATIONS, type AnimationSettings } from "@/lib/animations";
 import { relations } from "drizzle-orm";
@@ -53,14 +54,21 @@ export const projects = pgTable("projects", {
   }),
   location: text("location"),
   shotDate: date("shot_date"),
-  coverPhotoId: uuid("cover_photo_id"),
+  // FK vers photos (référence circulaire projets↔photos → AnyPgColumn) :
+  // supprimer la photo remet la référence à NULL au lieu de laisser un ID mort.
+  coverPhotoId: uuid("cover_photo_id").references(
+    (): AnyPgColumn => photos.id,
+    { onDelete: "set null" },
+  ),
   displayOrder: integer("display_order").notNull().default(0),
   published: boolean("published").notNull().default(false),
   publishedAt: timestamp("published_at"),
   // SEO par projet
   seoTitle: text("seo_title"),
   seoDescription: text("seo_description"),
-  ogPhotoId: uuid("og_photo_id"),
+  ogPhotoId: uuid("og_photo_id").references((): AnyPgColumn => photos.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

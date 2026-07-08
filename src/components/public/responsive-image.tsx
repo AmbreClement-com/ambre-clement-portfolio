@@ -28,14 +28,18 @@ export function ResponsiveImage({
   const srcset = (list: ImageVariants["avif"]) =>
     list.map((v) => `${v.url} ${v.width}w`).join(", ");
 
-  const fallback = variants.webp.at(-1)?.url;
+  // Variantes potentiellement incomplètes (upload interrompu) : repli d'un
+  // format sur l'autre plutôt qu'un `src` vide → jamais d'image cassée muette.
+  const fallback = (variants.webp.at(-1) ?? variants.avif.at(-1))?.url;
 
   return (
     <picture>
       {variants.avif.length > 0 && (
         <source type="image/avif" srcSet={srcset(variants.avif)} sizes={sizes} />
       )}
-      <source type="image/webp" srcSet={srcset(variants.webp)} sizes={sizes} />
+      {variants.webp.length > 0 && (
+        <source type="image/webp" srcSet={srcset(variants.webp)} sizes={sizes} />
+      )}
       <img
         src={fallback}
         alt={alt}

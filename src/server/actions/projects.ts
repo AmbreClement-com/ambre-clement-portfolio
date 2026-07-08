@@ -7,6 +7,7 @@ import { projects } from "@/server/db/schema";
 import { nextDisplayOrder, uniqueSlug } from "@/server/db/helpers";
 import { projectInput, reorderInput } from "@/lib/validators";
 import { requireAdmin } from "./guard";
+import { deleteAllPhotos } from "./photos";
 
 /** Revalide TOUT après une mutation projet : la liste admin (`/admin/projects`) ET les
  *  surfaces publiques (cinéma `/[onglet]`, pages `/projects/[slug]`). Sans la partie
@@ -69,6 +70,9 @@ export async function updateProject(id: string, raw: unknown) {
 
 export async function deleteProject(id: string) {
   await requireAdmin();
+  // AVANT la suppression : la cascade DB efface les LIGNES photos mais pas les
+  // FICHIERS du stockage → on supprime les photos explicitement, fichiers compris.
+  await deleteAllPhotos({ projectId: id });
   await db.delete(projects).where(eq(projects.id, id));
   revalidateProjects();
 }

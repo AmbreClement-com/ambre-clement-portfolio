@@ -15,7 +15,13 @@ import { pageZoom, pageOffset, projectReveal } from "@/lib/page-zoom";
 import { cn } from "@/lib/utils";
 import type { Photo } from "@/server/db/schema";
 
-const Lightbox = dynamic(() => import("./lightbox").then((m) => m.Lightbox));
+// `loading: null` = boundary Suspense LOCALE. Sans elle, le premier clic (chunk
+// pas encore chargé) suspend jusqu'à la racine de la route → la page entière se
+// vide (viewTransition), le scroll est clampé à 0 et la galerie se remonte en
+// haut. Avec la boundary, la suspension reste confinée à la visionneuse.
+const Lightbox = dynamic(() => import("./lightbox").then((m) => m.Lightbox), {
+  loading: () => null,
+});
 
 // Layout effect SSR-safe (sinon warning au rendu serveur).
 const useIsoLayoutEffect =
@@ -186,6 +192,12 @@ export function PhotosScroller({
     const mqs = [wide, tablet, phone];
     mqs.forEach((mq) => mq.addEventListener("change", apply));
     return () => mqs.forEach((mq) => mq.removeEventListener("change", apply));
+  }, []);
+
+  // Précharge le chunk de la visionneuse dès le montage : le 1er clic sur une
+  // photo ne suspend alors jamais (module déjà en cache → ouverture immédiate).
+  useEffect(() => {
+    void import("./lightbox");
   }, []);
 
   // La galerie démarre TOUJOURS en haut : on neutralise tout scroll résiduel de la

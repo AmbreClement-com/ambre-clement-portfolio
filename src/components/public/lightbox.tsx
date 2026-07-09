@@ -31,8 +31,30 @@ export function Lightbox({
     [index, photos.length, setIndex],
   );
 
+  // Verrou de scroll + focus — au MONTAGE uniquement (les flèches changent l'index
+  // et ne doivent surtout pas re-capturer la position : Safari remet le scroll à 0
+  // dès que `overflow: hidden` est posé, on relirait 0 au lieu de la vraie position).
   useEffect(() => {
     restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    const t = setTimeout(
+      () => overlayRef.current?.querySelector<HTMLElement>("button")?.focus(),
+      0,
+    );
+    return () => {
+      clearTimeout(t);
+      document.body.style.overflow = "";
+      // Restaure explicitement la position de la galerie : Chrome la préserve,
+      // mais Safari l'a remise à 0 avec l'overflow hidden → sans ça, la croix
+      // ramène en haut de la galerie. `preventScroll` : le focus restauré ne
+      // doit pas non plus déclencher de scrollIntoView.
+      window.scrollTo(0, scrollY);
+      restoreFocusRef.current?.focus?.({ preventScroll: true });
+    };
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
       else if (e.key === "ArrowLeft") prev();
@@ -51,18 +73,8 @@ export function Lightbox({
         }
       }
     };
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    const t = setTimeout(
-      () => overlayRef.current?.querySelector<HTMLElement>("button")?.focus(),
-      0,
-    );
-    return () => {
-      clearTimeout(t);
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKey);
-      restoreFocusRef.current?.focus?.();
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [close, prev, next]);
 
   const current = photos[index];
@@ -114,36 +126,52 @@ export function Lightbox({
         className="flex max-h-[88vh] max-w-[92vw] flex-col items-center gap-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <picture>
-          {current.variants.avif.length > 0 && (
-            <source
-              type="image/avif"
-              srcSet={current.variants.avif.map((v) => `${v.url} ${v.width}w`).join(", ")}
-              sizes="92vw"
+        {/* Swipe tactile : la photo se laisse glisser horizontalement (élastique),
+            et un geste suffisant — en distance OU en vitesse — change de photo.
+            `drag="x"` pose touch-action: pan-y → le geste vertical reste au
+            navigateur. Désactivé s'il n'y a qu'une photo. */}
+        <motion.div
+          className="flex min-h-0 items-center justify-center"
+          drag={photos.length > 1 ? "x" : false}
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.25}
+          onDragEnd={(_, info) => {
+            if (info.offset.x < -60 || info.velocity.x < -500) next();
+            else if (info.offset.x > 60 || info.velocity.x > 500) prev();
+          }}
+        >
+          <picture>
+            {current.variants.avif.length > 0 && (
+              <source
+                type="image/avif"
+                srcSet={current.variants.avif.map((v) => `${v.url} ${v.width}w`).join(", ")}
+                sizes="92vw"
+              />
+            )}
+            {current.variants.webp.length > 0 && (
+              <source
+                type="image/webp"
+                srcSet={current.variants.webp.map((v) => `${v.url} ${v.width}w`).join(", ")}
+                sizes="92vw"
+              />
+            )}
+            <img
+              // Sans `sizes`, le navigateur suppose 100vw et charge la plus grande variante
+              // (≈8 Mo) même sur un petit écran → lag/crash mobile. `sizes="92vw"` (largeur
+              // réelle de la visionneuse) laisse le srcset choisir. Repli = variante moyenne
+              // (~1080px) et non la plus grande, au cas où le srcset ne s'applique pas —
+              // avec bascule webp→avif si un format manque (upload interrompu).
+              src={
+                (current.variants.webp.find((v) => v.width >= 1080) ??
+                  current.variants.webp.at(-1) ??
+                  current.variants.avif.at(-1))?.url
+              }
+              alt={current.altText}
+              draggable={false}
+              className="max-h-[80vh] w-auto object-contain"
             />
-          )}
-          {current.variants.webp.length > 0 && (
-            <source
-              type="image/webp"
-              srcSet={current.variants.webp.map((v) => `${v.url} ${v.width}w`).join(", ")}
-              sizes="92vw"
-            />
-          )}
-          <img
-            // Sans `sizes`, le navigateur suppose 100vw et charge la plus grande variante
-            // (≈8 Mo) même sur un petit écran → lag/crash mobile. `sizes="92vw"` (largeur
-            // réelle de la visionneuse) laisse le srcset choisir. Repli = variante moyenne
-            // (~1080px) et non la plus grande, au cas où le srcset ne s'applique pas —
-            // avec bascule webp→avif si un format manque (upload interrompu).
-            src={
-              (current.variants.webp.find((v) => v.width >= 1080) ??
-                current.variants.webp.at(-1) ??
-                current.variants.avif.at(-1))?.url
-            }
-            alt={current.altText}
-            className="max-h-[80vh] w-auto object-contain"
-          />
-        </picture>
+          </picture>
+        </motion.div>
         <figcaption className="text-xs tracking-wide text-white/60">
           {index + 1} / {photos.length}
         </figcaption>

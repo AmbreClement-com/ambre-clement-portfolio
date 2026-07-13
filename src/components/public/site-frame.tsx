@@ -231,56 +231,42 @@ export function SiteFrame({
     }
   };
 
-  // ── Bas du cadre = BAS VISIBLE de l'écran ──────────────────────────────────
-  // iOS Safari cale les éléments FIXED sur le GRAND viewport (barre d'adresse
-  // repliée) même quand la barre est DÉPLIÉE — or elle se redéplie en bas de
-  // page : le bas du cadre (©/email) plongeait ~50 px derrière la barre. On
-  // mesure la hauteur RÉELLE du viewport des fixed (sonde top:0/bottom:0) et on
-  // lui soustrait le bas VISIBLE (visualViewport.offsetTop + height) ; l'écart
-  // est publié en variable CSS (--vv-bottom) ajoutée aux ancres bottom.
-  // `?debug-viewport` dans l'URL affiche les mesures à l'écran (diagnostic).
+  // ── Diagnostic viewport (`?debug-viewport` dans l'URL) ────────────────────
+  // Affiche à l'écran les mesures utiles au débogage iOS (hauteur du viewport
+  // des fixed, viewport visuel, safe-area, dvh…). AUCUN effet hors debug — le
+  // positionnement du bas du cadre est 100 % CSS (h-[100dvh] sur la racine).
   useEffect(() => {
+    if (!window.location.search.includes("debug-viewport")) return;
     const vv = window.visualViewport;
-    // Sonde = hauteur du containing block des fixed (≠ innerHeight sur iOS).
-    const fixedProbe = document.createElement("div");
-    fixedProbe.style.cssText =
-      "position:fixed;top:0;bottom:0;left:0;width:0;visibility:hidden;pointer-events:none";
-    document.body.appendChild(fixedProbe);
-    const debug = window.location.search.includes("debug-viewport");
-    let box: HTMLDivElement | null = null;
-    let safeProbe: HTMLDivElement | null = null;
-    if (debug) {
-      box = document.createElement("div");
-      box.style.cssText =
-        "position:fixed;left:8px;top:35vh;z-index:9999;background:rgba(0,0,0,.8);color:#fff;font:11px/1.5 monospace;padding:6px 8px;pointer-events:none;white-space:pre;border-radius:4px";
-      document.body.appendChild(box);
-      safeProbe = document.createElement("div"); // mesure env(safe-area-inset-bottom)
-      safeProbe.style.cssText =
-        "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none";
-      document.body.appendChild(safeProbe);
-    }
+    const mk = (css: string) => {
+      const el = document.createElement("div");
+      el.style.cssText = css;
+      document.body.appendChild(el);
+      return el;
+    };
+    // Sondes : containing block des fixed (top:0/bottom:0), 100dvh, safe-area.
+    const fixedProbe = mk(
+      "position:fixed;top:0;bottom:0;left:0;width:0;visibility:hidden;pointer-events:none",
+    );
+    const dvhProbe = mk(
+      "position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden;pointer-events:none",
+    );
+    const safeProbe = mk(
+      "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none",
+    );
+    const box = mk(
+      "position:fixed;left:8px;top:35vh;z-index:9999;background:rgba(0,0,0,.8);color:#fff;font:11px/1.5 monospace;padding:6px 8px;pointer-events:none;white-space:pre;border-radius:4px",
+    );
     const update = () => {
-      const scale = vv?.scale ?? 1;
-      const frameH = fixedProbe.offsetHeight;
-      const gap = vv
-        ? Math.max(0, frameH - (vv.height + vv.offsetTop))
-        : 0;
-      // Pinch-zoom : le viewport visuel rétrécit énormément → on n'y touche pas.
-      if (scale < 1.05)
-        document.documentElement.style.setProperty(
-          "--vv-bottom",
-          `${Math.round(gap)}px`,
-        );
-      if (box)
-        box.textContent =
-          `frameH  ${frameH}\n` +
-          `innerH  ${window.innerHeight}\n` +
-          `vvH     ${vv ? Math.round(vv.height) : "—"}\n` +
-          `vvTop   ${vv ? Math.round(vv.offsetTop) : "—"}\n` +
-          `gap     ${Math.round(gap)}\n` +
-          `safeB   ${safeProbe ? safeProbe.offsetHeight : "—"}\n` +
-          `scrollY ${Math.round(window.scrollY)}\n` +
-          `docH    ${document.documentElement.scrollHeight}`;
+      box.textContent =
+        `frameH  ${fixedProbe.offsetHeight}\n` +
+        `dvh     ${dvhProbe.offsetHeight}\n` +
+        `innerH  ${window.innerHeight}\n` +
+        `vvH     ${vv ? Math.round(vv.height) : "—"}\n` +
+        `vvTop   ${vv ? Math.round(vv.offsetTop) : "—"}\n` +
+        `safeB   ${safeProbe.offsetHeight}\n` +
+        `scrollY ${Math.round(window.scrollY)}\n` +
+        `docH    ${document.documentElement.scrollHeight}`;
     };
     update();
     vv?.addEventListener("resize", update);
@@ -292,9 +278,7 @@ export function SiteFrame({
       vv?.removeEventListener("scroll", update);
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
-      fixedProbe.remove();
-      box?.remove();
-      safeProbe?.remove();
+      [fixedProbe, dvhProbe, safeProbe, box].forEach((el) => el.remove());
     };
   }, []);
 
@@ -957,7 +941,12 @@ export function SiteFrame({
         <div
           ref={rootRef}
           data-site-frame
-          className="pointer-events-none fixed inset-0 z-30 select-none font-mono font-bold uppercase text-white mix-blend-difference"
+          // h-[100dvh] : iOS Safari cale les FIXED sur le GRAND viewport (barre
+          // repliée) même barre DÉPLIÉE (elle se redéplie en bas de page) → avec
+          // bottom:0 seul, le bas du cadre plongeait derrière la barre. `dvh`
+          // suit le viewport DYNAMIQUE : le bas du cadre = bas réellement
+          // visible. (height prime sur bottom → repli propre si dvh inconnu.)
+          className="pointer-events-none fixed inset-0 z-30 h-[100dvh] select-none font-mono font-bold uppercase text-white mix-blend-difference"
         >
       {/* 1er cadre (apparaît autour de la page dézoomée pendant la transition) */}
       <div
@@ -985,12 +974,12 @@ export function SiteFrame({
           <span
             ref={blc}
             data-frame-mark
-            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] left-5 size-4 border-b border-l border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] md:left-8"
+            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-5 size-4 border-b border-l border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:left-8"
           />
           <span
             ref={brc}
             data-frame-mark
-            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] right-5 size-4 border-b border-r border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] md:right-8"
+            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] right-5 size-4 border-b border-r border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:right-8"
           />
         </>
       )}
@@ -1022,7 +1011,7 @@ export function SiteFrame({
 
       {/* Copyright — bas-gauche. Mobile : texte réduit pour tenir au coin sans chevaucher
           la nav centrale. */}
-      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
+      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
         <span>
           ©{year}&nbsp;{domainLabel || siteDomain()}
         </span>
@@ -1045,7 +1034,7 @@ export function SiteFrame({
       {meta.nav && (
         <div
           data-frame-swap
-          className="project-nav absolute bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-[calc(1rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] lg:gap-3 lg:text-xs"
+          className="project-nav absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:gap-3 lg:text-xs"
         >
           {/* Précédent — bouton rond (mobile/tablette) · flèche + titre (desktop) */}
           {meta.nav.prevSlug ? (
@@ -1137,7 +1126,7 @@ export function SiteFrame({
           onClick={copyEmail}
           data-track="email_copy"
           aria-label={`Copier l'adresse email ${email}`}
-          className="pointer-events-auto absolute bottom-[calc(1rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
+          className="pointer-events-auto absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
         >
           {copied ? "Copié !" : email}
         </button>

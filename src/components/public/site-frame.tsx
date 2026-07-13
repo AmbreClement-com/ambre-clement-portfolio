@@ -231,6 +231,36 @@ export function SiteFrame({
     }
   };
 
+  // ── Alignement du cadre sur la FENÊTRE VISIBLE ─────────────────────────────
+  // Complément du h-[100dvh] : quand la barre Safari se déplie (haut/bas de
+  // page), iOS décale AUSSI la fenêtre visible vers le bas DANS le viewport des
+  // fixed (visualViewport.offsetTop > 0) → sans compensation, le HAUT du cadre
+  // se fait rogner. On publie ce décalage en --vv-top (translateY du cadre).
+  // Valeur STABLE (0 en navigation normale, ~25px barre dépliée) — rien à voir
+  // avec l'ancien calcul de hauteur qui tressautait. rAF-throttlé.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      // Pinch-zoom : offsetTop = panoramique du zoom → ne pas décaler le cadre.
+      const y = vv.scale < 1.05 ? Math.max(0, Math.round(vv.offsetTop)) : 0;
+      document.documentElement.style.setProperty("--vv-top", `${y}px`);
+    };
+    const onChange = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    apply();
+    vv.addEventListener("resize", onChange);
+    vv.addEventListener("scroll", onChange);
+    return () => {
+      cancelAnimationFrame(raf);
+      vv.removeEventListener("resize", onChange);
+      vv.removeEventListener("scroll", onChange);
+    };
+  }, []);
+
   // ── Diagnostic viewport (`?debug-viewport` dans l'URL) ────────────────────
   // Affiche à l'écran les mesures utiles au débogage iOS (hauteur du viewport
   // des fixed, viewport visuel, safe-area, dvh…). AUCUN effet hors debug — le
@@ -946,7 +976,10 @@ export function SiteFrame({
           // bottom:0 seul, le bas du cadre plongeait derrière la barre. `dvh`
           // suit le viewport DYNAMIQUE : le bas du cadre = bas réellement
           // visible. (height prime sur bottom → repli propre si dvh inconnu.)
-          className="pointer-events-none fixed inset-0 z-30 h-[100dvh] select-none font-mono font-bold uppercase text-white mix-blend-difference"
+          // translate-y-(--vv-top) : la fenêtre visible est en plus DÉCALÉE dans
+          // le viewport des fixed quand la barre est dépliée (cf. effet --vv-top)
+          // → taille (dvh) + position (translate) = cadre ancré au visible.
+          className="pointer-events-none fixed inset-0 z-30 h-[100dvh] translate-y-[var(--vv-top,0px)] select-none font-mono font-bold uppercase text-white mix-blend-difference"
         >
       {/* 1er cadre (apparaît autour de la page dézoomée pendant la transition) */}
       <div

@@ -231,31 +231,39 @@ export function SiteFrame({
     }
   };
 
-  // ── Bas du cadre = VIEWPORT VISUEL ─────────────────────────────────────────
-  // Sur iOS (viewport-fit=cover), la barre Safari / zone système peut RECOUVRIR
-  // le bas du viewport de layout sans le redimensionner → les infos ancrées en
-  // bottom passaient dessous. On mesure l'écart layout↔visuel (visualViewport)
-  // et on le publie en variable CSS ; les ancres bottom l'ajoutent à leur calc.
+  // ── Bas du cadre = BAS VISIBLE de l'écran ──────────────────────────────────
+  // iOS Safari cale les éléments FIXED sur le GRAND viewport (barre d'adresse
+  // repliée) même quand la barre est DÉPLIÉE — or elle se redéplie en bas de
+  // page : le bas du cadre (©/email) plongeait ~50 px derrière la barre. On
+  // mesure la hauteur RÉELLE du viewport des fixed (sonde top:0/bottom:0) et on
+  // lui soustrait le bas VISIBLE (visualViewport.offsetTop + height) ; l'écart
+  // est publié en variable CSS (--vv-bottom) ajoutée aux ancres bottom.
   // `?debug-viewport` dans l'URL affiche les mesures à l'écran (diagnostic).
   useEffect(() => {
     const vv = window.visualViewport;
+    // Sonde = hauteur du containing block des fixed (≠ innerHeight sur iOS).
+    const fixedProbe = document.createElement("div");
+    fixedProbe.style.cssText =
+      "position:fixed;top:0;bottom:0;left:0;width:0;visibility:hidden;pointer-events:none";
+    document.body.appendChild(fixedProbe);
     const debug = window.location.search.includes("debug-viewport");
     let box: HTMLDivElement | null = null;
-    let probe: HTMLDivElement | null = null;
+    let safeProbe: HTMLDivElement | null = null;
     if (debug) {
       box = document.createElement("div");
       box.style.cssText =
         "position:fixed;left:8px;top:35vh;z-index:9999;background:rgba(0,0,0,.8);color:#fff;font:11px/1.5 monospace;padding:6px 8px;pointer-events:none;white-space:pre;border-radius:4px";
       document.body.appendChild(box);
-      probe = document.createElement("div"); // mesure env(safe-area-inset-bottom)
-      probe.style.cssText =
+      safeProbe = document.createElement("div"); // mesure env(safe-area-inset-bottom)
+      safeProbe.style.cssText =
         "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none";
-      document.body.appendChild(probe);
+      document.body.appendChild(safeProbe);
     }
     const update = () => {
       const scale = vv?.scale ?? 1;
+      const frameH = fixedProbe.offsetHeight;
       const gap = vv
-        ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        ? Math.max(0, frameH - (vv.height + vv.offsetTop))
         : 0;
       // Pinch-zoom : le viewport visuel rétrécit énormément → on n'y touche pas.
       if (scale < 1.05)
@@ -265,11 +273,12 @@ export function SiteFrame({
         );
       if (box)
         box.textContent =
+          `frameH  ${frameH}\n` +
           `innerH  ${window.innerHeight}\n` +
           `vvH     ${vv ? Math.round(vv.height) : "—"}\n` +
           `vvTop   ${vv ? Math.round(vv.offsetTop) : "—"}\n` +
           `gap     ${Math.round(gap)}\n` +
-          `safeB   ${probe ? probe.offsetHeight : "—"}\n` +
+          `safeB   ${safeProbe ? safeProbe.offsetHeight : "—"}\n` +
           `scrollY ${Math.round(window.scrollY)}\n` +
           `docH    ${document.documentElement.scrollHeight}`;
     };
@@ -277,12 +286,15 @@ export function SiteFrame({
     vv?.addEventListener("resize", update);
     vv?.addEventListener("scroll", update);
     window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
     return () => {
       vv?.removeEventListener("resize", update);
       vv?.removeEventListener("scroll", update);
       window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      fixedProbe.remove();
       box?.remove();
-      probe?.remove();
+      safeProbe?.remove();
     };
   }, []);
 

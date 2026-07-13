@@ -231,87 +231,6 @@ export function SiteFrame({
     }
   };
 
-  // ── Alignement du cadre sur la FENÊTRE VISIBLE ─────────────────────────────
-  // Complément du h-[100dvh] : quand la barre Safari se déplie (haut/bas de
-  // page), iOS décale AUSSI la fenêtre visible vers le bas DANS le viewport des
-  // fixed (visualViewport.offsetTop > 0) → sans compensation, le HAUT du cadre
-  // se fait rogner. On publie ce décalage en --vv-top (translateY du cadre).
-  // Valeur STABLE (0 en navigation normale, ~25px barre dépliée) — rien à voir
-  // avec l'ancien calcul de hauteur qui tressautait. rAF-throttlé.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let raf = 0;
-    const apply = () => {
-      raf = 0;
-      // Pinch-zoom : offsetTop = panoramique du zoom → ne pas décaler le cadre.
-      const y = vv.scale < 1.05 ? Math.max(0, Math.round(vv.offsetTop)) : 0;
-      document.documentElement.style.setProperty("--vv-top", `${y}px`);
-    };
-    const onChange = () => {
-      if (!raf) raf = requestAnimationFrame(apply);
-    };
-    apply();
-    vv.addEventListener("resize", onChange);
-    vv.addEventListener("scroll", onChange);
-    return () => {
-      cancelAnimationFrame(raf);
-      vv.removeEventListener("resize", onChange);
-      vv.removeEventListener("scroll", onChange);
-    };
-  }, []);
-
-  // ── Diagnostic viewport (`?debug-viewport` dans l'URL) ────────────────────
-  // Affiche à l'écran les mesures utiles au débogage iOS (hauteur du viewport
-  // des fixed, viewport visuel, safe-area, dvh…). AUCUN effet hors debug — le
-  // positionnement du bas du cadre est 100 % CSS (h-[100dvh] sur la racine).
-  useEffect(() => {
-    if (!window.location.search.includes("debug-viewport")) return;
-    const vv = window.visualViewport;
-    const mk = (css: string) => {
-      const el = document.createElement("div");
-      el.style.cssText = css;
-      document.body.appendChild(el);
-      return el;
-    };
-    // Sondes : containing block des fixed (top:0/bottom:0), 100dvh, safe-area.
-    const fixedProbe = mk(
-      "position:fixed;top:0;bottom:0;left:0;width:0;visibility:hidden;pointer-events:none",
-    );
-    const dvhProbe = mk(
-      "position:fixed;top:0;left:0;width:0;height:100dvh;visibility:hidden;pointer-events:none",
-    );
-    const safeProbe = mk(
-      "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none",
-    );
-    const box = mk(
-      "position:fixed;left:8px;top:35vh;z-index:9999;background:rgba(0,0,0,.8);color:#fff;font:11px/1.5 monospace;padding:6px 8px;pointer-events:none;white-space:pre;border-radius:4px",
-    );
-    const update = () => {
-      box.textContent =
-        `frameH  ${fixedProbe.offsetHeight}\n` +
-        `dvh     ${dvhProbe.offsetHeight}\n` +
-        `innerH  ${window.innerHeight}\n` +
-        `vvH     ${vv ? Math.round(vv.height) : "—"}\n` +
-        `vvTop   ${vv ? Math.round(vv.offsetTop) : "—"}\n` +
-        `safeB   ${safeProbe.offsetHeight}\n` +
-        `scrollY ${Math.round(window.scrollY)}\n` +
-        `docH    ${document.documentElement.scrollHeight}`;
-    };
-    update();
-    vv?.addEventListener("resize", update);
-    vv?.addEventListener("scroll", update);
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      vv?.removeEventListener("resize", update);
-      vv?.removeEventListener("scroll", update);
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-      [fixedProbe, dvhProbe, safeProbe, box].forEach((el) => el.remove());
-    };
-  }, []);
-
   const rootRef = useRef<HTMLDivElement>(null);
   const tlc = useRef<HTMLSpanElement>(null);
   const trc = useRef<HTMLSpanElement>(null);
@@ -971,15 +890,7 @@ export function SiteFrame({
         <div
           ref={rootRef}
           data-site-frame
-          // h-[100dvh] : iOS Safari cale les FIXED sur le GRAND viewport (barre
-          // repliée) même barre DÉPLIÉE (elle se redéplie en bas de page) → avec
-          // bottom:0 seul, le bas du cadre plongeait derrière la barre. `dvh`
-          // suit le viewport DYNAMIQUE : le bas du cadre = bas réellement
-          // visible. (height prime sur bottom → repli propre si dvh inconnu.)
-          // translate-y-(--vv-top) : la fenêtre visible est en plus DÉCALÉE dans
-          // le viewport des fixed quand la barre est dépliée (cf. effet --vv-top)
-          // → taille (dvh) + position (translate) = cadre ancré au visible.
-          className="pointer-events-none fixed inset-0 z-30 h-[100dvh] translate-y-[var(--vv-top,0px)] select-none font-mono font-bold uppercase text-white mix-blend-difference"
+          className="pointer-events-none fixed inset-0 z-30 select-none font-mono font-bold uppercase text-white mix-blend-difference"
         >
       {/* 1er cadre (apparaît autour de la page dézoomée pendant la transition) */}
       <div
@@ -1001,18 +912,15 @@ export function SiteFrame({
             data-frame-mark
             className="absolute right-5 top-[6.5rem] size-4 border-r border-t border-white md:right-8 md:top-14"
           />
-          {/* env(safe-area-inset-bottom) : sur iOS (Safari barre réduite / PWA),
-              la zone basse de l'écran recouvre le contenu → tout le bas du cadre
-              remonte d'autant. Vaut 0 ailleurs (rendu desktop inchangé). */}
           <span
             ref={blc}
             data-frame-mark
-            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-5 size-4 border-b border-l border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:left-8"
+            className="absolute bottom-12 left-5 size-4 border-b border-l border-white md:bottom-14 md:left-8"
           />
           <span
             ref={brc}
             data-frame-mark
-            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] right-5 size-4 border-b border-r border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:right-8"
+            className="absolute bottom-12 right-5 size-4 border-b border-r border-white md:bottom-14 md:right-8"
           />
         </>
       )}
@@ -1044,7 +952,7 @@ export function SiteFrame({
 
       {/* Copyright — bas-gauche. Mobile : texte réduit pour tenir au coin sans chevaucher
           la nav centrale. */}
-      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
+      <div className="absolute bottom-4 left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
         <span>
           ©{year}&nbsp;{domainLabel || siteDomain()}
         </span>
@@ -1067,7 +975,7 @@ export function SiteFrame({
       {meta.nav && (
         <div
           data-frame-swap
-          className="project-nav absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:gap-3 lg:text-xs"
+          className="project-nav absolute bottom-16 left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-4 lg:gap-3 lg:text-xs"
         >
           {/* Précédent — bouton rond (mobile/tablette) · flèche + titre (desktop) */}
           {meta.nav.prevSlug ? (
@@ -1159,7 +1067,7 @@ export function SiteFrame({
           onClick={copyEmail}
           data-track="email_copy"
           aria-label={`Copier l'adresse email ${email}`}
-          className="pointer-events-auto absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
+          className="pointer-events-auto absolute bottom-4 right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
         >
           {copied ? "Copié !" : email}
         </button>

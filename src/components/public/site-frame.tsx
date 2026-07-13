@@ -231,6 +231,61 @@ export function SiteFrame({
     }
   };
 
+  // ── Bas du cadre = VIEWPORT VISUEL ─────────────────────────────────────────
+  // Sur iOS (viewport-fit=cover), la barre Safari / zone système peut RECOUVRIR
+  // le bas du viewport de layout sans le redimensionner → les infos ancrées en
+  // bottom passaient dessous. On mesure l'écart layout↔visuel (visualViewport)
+  // et on le publie en variable CSS ; les ancres bottom l'ajoutent à leur calc.
+  // `?debug-viewport` dans l'URL affiche les mesures à l'écran (diagnostic).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const debug = window.location.search.includes("debug-viewport");
+    let box: HTMLDivElement | null = null;
+    let probe: HTMLDivElement | null = null;
+    if (debug) {
+      box = document.createElement("div");
+      box.style.cssText =
+        "position:fixed;left:8px;top:35vh;z-index:9999;background:rgba(0,0,0,.8);color:#fff;font:11px/1.5 monospace;padding:6px 8px;pointer-events:none;white-space:pre;border-radius:4px";
+      document.body.appendChild(box);
+      probe = document.createElement("div"); // mesure env(safe-area-inset-bottom)
+      probe.style.cssText =
+        "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none";
+      document.body.appendChild(probe);
+    }
+    const update = () => {
+      const scale = vv?.scale ?? 1;
+      const gap = vv
+        ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        : 0;
+      // Pinch-zoom : le viewport visuel rétrécit énormément → on n'y touche pas.
+      if (scale < 1.05)
+        document.documentElement.style.setProperty(
+          "--vv-bottom",
+          `${Math.round(gap)}px`,
+        );
+      if (box)
+        box.textContent =
+          `innerH  ${window.innerHeight}\n` +
+          `vvH     ${vv ? Math.round(vv.height) : "—"}\n` +
+          `vvTop   ${vv ? Math.round(vv.offsetTop) : "—"}\n` +
+          `gap     ${Math.round(gap)}\n` +
+          `safeB   ${probe ? probe.offsetHeight : "—"}\n` +
+          `scrollY ${Math.round(window.scrollY)}\n` +
+          `docH    ${document.documentElement.scrollHeight}`;
+    };
+    update();
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("scroll", update);
+      box?.remove();
+      probe?.remove();
+    };
+  }, []);
+
   const rootRef = useRef<HTMLDivElement>(null);
   const tlc = useRef<HTMLSpanElement>(null);
   const trc = useRef<HTMLSpanElement>(null);
@@ -918,12 +973,12 @@ export function SiteFrame({
           <span
             ref={blc}
             data-frame-mark
-            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-5 size-4 border-b border-l border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:left-8"
+            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] left-5 size-4 border-b border-l border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] md:left-8"
           />
           <span
             ref={brc}
             data-frame-mark
-            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] right-5 size-4 border-b border-r border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:right-8"
+            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] right-5 size-4 border-b border-r border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] md:right-8"
           />
         </>
       )}
@@ -955,7 +1010,7 @@ export function SiteFrame({
 
       {/* Copyright — bas-gauche. Mobile : texte réduit pour tenir au coin sans chevaucher
           la nav centrale. */}
-      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
+      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
         <span>
           ©{year}&nbsp;{domainLabel || siteDomain()}
         </span>
@@ -978,7 +1033,7 @@ export function SiteFrame({
       {meta.nav && (
         <div
           data-frame-swap
-          className="project-nav absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:gap-3 lg:text-xs"
+          className="project-nav absolute bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-[calc(1rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] lg:gap-3 lg:text-xs"
         >
           {/* Précédent — bouton rond (mobile/tablette) · flèche + titre (desktop) */}
           {meta.nav.prevSlug ? (
@@ -1070,7 +1125,7 @@ export function SiteFrame({
           onClick={copyEmail}
           data-track="email_copy"
           aria-label={`Copier l'adresse email ${email}`}
-          className="pointer-events-auto absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
+          className="pointer-events-auto absolute bottom-[calc(1rem+env(safe-area-inset-bottom)+var(--vv-bottom,0px))] right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
         >
           {copied ? "Copié !" : email}
         </button>

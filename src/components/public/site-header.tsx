@@ -797,9 +797,13 @@ export function SiteHeader({
         className="pointer-events-none fixed inset-x-0 top-4 z-[55] flex justify-center mix-blend-difference md:top-6"
       >
         <div className="w-[calc(100vw-1.5rem)] md:w-[21rem] md:max-w-[calc(100vw-2rem)]">
+          {/* Halo BLANC : en mix-blend-difference, seuls les pixels clairs agissent
+              (différence avec du noir = identité). Le halo inverse le voisinage du
+              texte → liseré de contraste sur fond clair COMME foncé, là où la pure
+              inversion devenait illisible sur les photos gris moyen. */}
           <div
             ref={blendTitleRef}
-            className="type-heading select-none px-5 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-white"
+            className="type-heading select-none px-5 py-3.5 text-sm font-semibold uppercase tracking-[0.18em] text-white [text-shadow:0_0_1px_rgba(255,255,255,1),0_0_3px_rgba(255,255,255,0.85),0_1px_10px_rgba(255,255,255,0.45)]"
           >
             {siteName}
           </div>

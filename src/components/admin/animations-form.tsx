@@ -17,6 +17,7 @@ import {
   type AnimationSettings,
 } from "@/lib/animations";
 import { AnimationPreview } from "@/components/admin/animation-preview";
+import { SaveBar } from "@/components/admin/save-bar";
 
 const SPEEDS = [
   ["fast", "Rapide"],
@@ -204,6 +205,21 @@ export function AnimationsForm({
         </p>
       </div>
 
+      {/* Encoches du cadre */}
+      <div className="grid gap-1 border-b border-border/60 pb-4">
+        {header(
+          "Encoches du cadre",
+          anim.frameCornersEnabled,
+          (v) => setAnimField("frameCornersEnabled", v),
+          "frameCornersEnabled",
+        )}
+        <p className="text-xs text-muted-foreground">
+          Les 4 petits repères d&apos;angle du cadre, façon viseur
+          d&apos;appareil photo. Désactivé, seules les encoches disparaissent —
+          le reste du cadre (textes, compteurs, liens) reste en place.
+        </p>
+      </div>
+
       {/* Transition de page + vitesse */}
       <div className="grid gap-3 border-b border-border/60 pb-4">
         {header(
@@ -255,12 +271,12 @@ export function AnimationsForm({
         {speedRow(anim.loaderEnabled, "loaderSpeed")}
       </div>
 
-      <div>
+      <SaveBar>
         <Button type="submit" disabled={pending}>
           {pending && <Spinner className="mr-2" />}
           {pending ? "Enregistrement…" : "Enregistrer"}
         </Button>
-      </div>
+      </SaveBar>
     </form>
   );
 }

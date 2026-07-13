@@ -43,9 +43,12 @@ export function AdminMobileNav(props: Props) {
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    // STICKY sur CE wrapper (enfant direct du layout, pleine hauteur de page) :
+    // posé sur la barre interne, le sticky était neutralisé — son parent (ce div)
+    // ne faisait que la hauteur de la barre, elle ne pouvait pas « coller ».
+    <div className="sticky top-0 z-40 md:hidden">
       {/* Barre supérieure mobile */}
-      <div className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur">
+      <div className="flex items-center gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur">
         <button
           type="button"
           onClick={() => setOpen(true)}

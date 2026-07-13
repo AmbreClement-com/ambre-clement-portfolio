@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
+import { SaveBar } from "@/components/admin/save-bar";
 import type { Pricing, StoredImage } from "@/server/db/schema";
 
 export function PricingForm({ pricing }: { pricing?: Pricing | null }) {
@@ -230,12 +231,13 @@ export function PricingForm({ pricing }: { pricing?: Pricing | null }) {
         </div>
       </div>
 
-      <div>
+      {/* Formulaire posé directement sur la page (pas de carte hôte). */}
+      <SaveBar inCard={false}>
         <Button onClick={save} disabled={pending || imgBusy}>
           {pending && <Spinner className="mr-2" />}
           {isEdit ? "Enregistrer" : "Créer le tarif"}
         </Button>
-      </div>
+      </SaveBar>
     </div>
   );
 }

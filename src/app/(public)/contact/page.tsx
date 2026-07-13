@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { getSettings } from "@/server/db/queries/projects";
 import { FrameMeta } from "@/components/public/frame-context";
 import { ResponsiveImage } from "@/components/public/responsive-image";
-import SplashCursor from "@/components/public/splash-cursor";
-import { resolveAnimations } from "@/lib/animations";
 import { buildMetadata } from "@/lib/seo";
 
 export const revalidate = 3600;
@@ -22,7 +20,6 @@ export default async function ContactPage() {
   const phone = settings?.contactPhone ?? null;
   const location = settings?.contactLocation ?? null;
   const image = settings?.contactImage ?? null;
-  const anims = resolveAnimations(settings?.animations);
 
   return (
     <main className="relative h-[100svh] w-full overflow-hidden bg-neutral-900">
@@ -100,20 +97,6 @@ export default async function ContactPage() {
         )}
       </div>
 
-      {/* Curseur fluide (WebGL) — fumée BLANCHE en mix-blend-difference → INVERSE
-          les couleurs de la photo dessous. L'opacité du calque doit rester ÉLEVÉE :
-          sinon le blend « difference » n'est appliqué qu'en partie (ex. 0.3 = 30 %
-          d'inversion seulement → voile fade). Le fond noir du fluide reste invisible
-          (différence avec noir = inchangé), donc seule la fumée inverse vraiment.
-          La subtilité vient des traînées (dissipation) et du rayon, pas de l'opacité.
-          L'intensité back-office module l'opacité de 0.6 (douce) à 1 (inversion pleine). */}
-      {anims.cursorEnabled && (
-        <SplashCursor
-          OPACITY={0.6 + 0.4 * (anims.cursorIntensity / 100)}
-          DENSITY_DISSIPATION={3.2}
-          SPLAT_RADIUS={0.2}
-        />
-      )}
     </main>
   );
 }

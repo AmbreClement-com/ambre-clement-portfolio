@@ -210,8 +210,6 @@
   }
 }
 
-/* Curseur fumée (page Contact) : blob blanc doux, flou, en dégradés radiaux
-   irréguliers (look nuage). Centré via margin. Oscillation douce pour la vie. */
 /* Entrée au chargement (page Contact) — montée en fondu, échelonnée. */
 .c-rise {
   opacity: 0;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import SplashCursor from "@/components/public/splash-cursor";
 
 /** Texture de démo (dégradé + grille) pour bien voir la déformation. */
 function makeTexture(): HTMLCanvasElement | null {
@@ -258,12 +257,10 @@ export function AnimationPreview({
   enabled,
   intensity,
 }: {
-  kind: "cursor" | "photoHover" | "photoDim" | "scrollWave";
+  kind: "photoHover" | "photoDim" | "scrollWave";
   enabled: boolean;
   intensity: number;
 }) {
-  if (kind === "cursor")
-    return <CursorPreview enabled={enabled} intensity={intensity} />;
   if (kind === "photoDim")
     return <HoverDimPreview enabled={enabled} intensity={intensity} />;
   return <DeformPreview mode={kind} enabled={enabled} intensity={intensity} />;
@@ -304,57 +301,6 @@ function HoverDimPreview({
       </div>
       <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-black/45 px-1.5 py-px text-[10px] font-medium text-white">
         survole ici
-      </span>
-    </div>
-  );
-}
-
-/** Aperçu du curseur fluide. La simulation (lourde) n'est MONTÉE que quand la box
- *  est à l'écran (sinon elle tourne dans le vide → page qui rame). Résolution
- *  réduite vs le site (petite box). */
-function CursorPreview({
-  enabled,
-  intensity,
-}: {
-  enabled: boolean;
-  intensity: number;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([e]) => setVisible(e.isIntersecting),
-      { rootMargin: "150px" }, // marge → pas de montage/démontage en rafale au scroll
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <div
-      ref={ref}
-      className="relative size-32 shrink-0 overflow-hidden rounded-md"
-      style={{ background: "linear-gradient(120deg,#2c2c2c,#5a5a5a 45%,#262626)" }}
-    >
-      {enabled && visible ? (
-        <SplashCursor
-          CONTAINED
-          OPACITY={0.85 * (intensity / 100)}
-          DENSITY_DISSIPATION={3}
-          SPLAT_RADIUS={0.3}
-          SIM_RESOLUTION={32}
-          DYE_RESOLUTION={128}
-        />
-      ) : (
-        !enabled && (
-          <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
-            Désactivé
-          </span>
-        )
-      )}
-      <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-black/45 px-1.5 py-px text-[10px] font-medium text-white">
-        bouge la souris ici
       </span>
     </div>
   );

@@ -87,13 +87,14 @@ export default async function PublicLayout({
           email={settings?.email ?? null}
           speed={transitionSpeed}
           domainLabel={settings?.frameDomain?.trim() || null}
+          cornersEnabled={anims.frameCornersEnabled}
         />
-        {/* Le curseur fluide n'existe QUE sur /contact (voir contact/page.tsx). */}
         <Analytics />
         <IntroOverlay
           enabled={anims.loaderEnabled}
           speed={loaderSpeed}
           siteName={siteName}
+          cornersEnabled={anims.frameCornersEnabled}
         />
       </div>
       {/* Barre admin flottante HORS du wrapper de thème : outil de back-office,

@@ -21,7 +21,8 @@ export default async function AdminContactPage() {
         title="Contact"
         description="Coordonnées et contenu de la page Contact du site."
       />
-      <Card>
+      {/* overflow-visible : requis par le bouton Enregistrer sticky (SaveBar). */}
+      <Card className="overflow-visible">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AtSign className="size-4 text-primary" />

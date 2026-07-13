@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { SaveBar } from "@/components/admin/save-bar";
 
 type Settings = {
   siteName?: string | null;
@@ -90,12 +91,12 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         </p>
       </div>
 
-      <div>
+      <SaveBar>
         <Button type="submit" disabled={pending}>
           {pending && <Spinner className="mr-2" />}
           {pending ? "Enregistrement…" : "Enregistrer"}
         </Button>
-      </div>
+      </SaveBar>
     </form>
   );
 }

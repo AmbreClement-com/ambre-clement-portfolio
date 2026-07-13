@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { SaveBar } from "@/components/admin/save-bar";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -178,7 +179,8 @@ export function UsersManager({
   return (
     <div className="grid gap-6">
       {/* Inviter */}
-      <Card>
+      {/* overflow-visible : requis par le bouton d'envoi sticky (SaveBar). */}
+      <Card className="overflow-visible">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="size-4 text-primary" />
@@ -244,12 +246,12 @@ export function UsersManager({
               uniquement · <span className="font-medium text-foreground">Administrateur</span>{" "}
               : accès total (utilisateurs, réglages).
             </p>
-            <div>
+            <SaveBar>
               <Button type="submit" disabled={pending}>
                 {pending && <Spinner className="mr-2" />}
                 Créer l&apos;invitation
               </Button>
-            </div>
+            </SaveBar>
           </form>
         </CardContent>
       </Card>

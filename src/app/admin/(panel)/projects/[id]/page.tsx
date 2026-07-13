@@ -44,7 +44,8 @@ export default async function EditProjectPage({
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,440px)_1fr] xl:items-start">
-        <Card>
+        {/* overflow-visible : requis par le bouton Enregistrer sticky (SaveBar). */}
+        <Card className="overflow-visible">
           <CardHeader>
             <CardTitle className="text-base">Détails</CardTitle>
           </CardHeader>

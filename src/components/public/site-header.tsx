@@ -605,7 +605,7 @@ export function SiteHeader({
   const itemActive = dark ? "text-white" : "text-neutral-900";
   const itemIdle = dark
     ? "text-white/70 group-hover:text-white"
-    : "text-neutral-900/45 group-hover:text-neutral-900";
+    : "text-neutral-900/70 group-hover:text-neutral-900";
   const numActive = dark ? "text-white/70" : "text-neutral-900/60";
   const numIdle = dark ? "text-white/30" : "text-neutral-900/30";
   const arrow = dark ? "text-white/50" : "text-neutral-900/45";

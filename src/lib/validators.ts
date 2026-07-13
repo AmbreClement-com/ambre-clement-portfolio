@@ -58,8 +58,6 @@ export const settingsInput = z.object({
 /** Carte « Animations » (admin) : on/off + intensité + vitesses par effet. */
 export const animationsInput = z.object({
   animations: z.object({
-    cursorEnabled: z.boolean(),
-    cursorIntensity: z.number().min(0).max(200),
     photoHoverEnabled: z.boolean(),
     photoHoverIntensity: z.number().min(0).max(200),
     photoDimEnabled: z.boolean(),
@@ -73,6 +71,7 @@ export const animationsInput = z.object({
     loaderSpeed: z.enum(["slow", "medium", "fast"]),
     projectTransitionEnabled: z.boolean(),
     projectTransitionSpeed: z.enum(["slow", "medium", "fast"]),
+    frameCornersEnabled: z.boolean(),
   }),
 });
 

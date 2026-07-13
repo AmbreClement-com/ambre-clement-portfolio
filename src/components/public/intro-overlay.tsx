@@ -75,6 +75,7 @@ export function IntroOverlay({
   enabled = true,
   speed = 1,
   siteName = "Ambre Clément",
+  cornersEnabled = true,
 }: {
   /** Activé dans les réglages animations (sinon le site s'affiche directement). */
   enabled?: boolean;
@@ -82,6 +83,9 @@ export function IntroOverlay({
   speed?: number;
   /** Nom du site (réglable dans l'admin) — le titre qui s'écrit au démarrage. */
   siteName?: string;
+  /** Encoches d'angle du cadre (réglage admin) : désactivées, le loader ne
+   *  trace pas les repères du 2ᵉ cadre (le site ne les affichera pas non plus). */
+  cornersEnabled?: boolean;
 }) {
   const LOGO = siteName.toUpperCase();
   const [phase, setPhase] = useState<Phase>("pending");
@@ -174,7 +178,7 @@ export function IntroOverlay({
       const ix = vw * 0.2 + 32;
       const iy = vh * 0.2 + 56;
       const L = 18;
-      if (corners) {
+      if (corners && cornersEnabled) {
         draw(
           corners,
           [
@@ -274,7 +278,7 @@ export function IntroOverlay({
       tl.kill();
       frameClone?.remove();
     };
-  }, [phase, speed, LOGO]);
+  }, [phase, speed, LOGO, cornersEnabled]);
 
   if (phase === "done") return null;
   return (

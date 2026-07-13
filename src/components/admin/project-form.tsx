@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
+import { SaveBar } from "@/components/admin/save-bar";
 import type { Project } from "@/server/db/schema";
 
 type Props = {
@@ -166,12 +167,12 @@ export function ProjectForm({ project, categoryId }: Props) {
         <Label htmlFor="published">Publié</Label>
       </div>
 
-      <div>
+      <SaveBar>
         <Button type="submit" disabled={pending}>
           {pending && <Spinner className="mr-2" />}
           {pending ? "Enregistrement…" : isEdit ? "Enregistrer" : "Créer le projet"}
         </Button>
-      </div>
+      </SaveBar>
     </form>
   );
 }

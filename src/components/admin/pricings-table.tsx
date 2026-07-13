@@ -108,7 +108,9 @@ function Row({ row, onDeleted }: { row: Pricing; onDeleted: () => void }) {
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-3 rounded-lg border border-border bg-card p-2 ${
+      // min-w-0 : sans lui la rangée (item de grid, min-width:auto) impose sa
+      // largeur intrinsèque à TOUTE la page sur mobile (cf. projects-table).
+      className={`flex min-w-0 items-center gap-2 rounded-lg border border-border bg-card p-2 sm:gap-3 ${
         isDragging ? "z-10 opacity-70" : ""
       }`}
     >
@@ -122,7 +124,7 @@ function Row({ row, onDeleted }: { row: Pricing; onDeleted: () => void }) {
         <GripVertical className="size-4" />
       </button>
 
-      <div className="size-12 shrink-0 overflow-hidden rounded bg-muted">
+      <div className="size-10 shrink-0 overflow-hidden rounded bg-muted sm:size-12">
         {thumb && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={thumb} alt="" className="size-full object-cover" />
@@ -136,18 +138,23 @@ function Row({ row, onDeleted }: { row: Pricing; onDeleted: () => void }) {
         </p>
       </div>
 
-      {!published && <Badge variant="secondary">Brouillon</Badge>}
+      {/* Badge masqué < sm (le switch montre déjà l'état) → place au titre. */}
+      {!published && (
+        <Badge variant="secondary" className="hidden sm:inline-flex">
+          Brouillon
+        </Badge>
+      )}
 
-      <div className="flex items-center gap-1.5 px-2">
+      <div className="flex items-center gap-1.5 sm:px-2">
         <Switch checked={published} onCheckedChange={toggle} aria-label="Publier" />
       </div>
 
-      <Button asChild variant="ghost" size="sm">
+      <Button asChild variant="ghost" size="sm" className="px-2 sm:px-3">
         <Link href={`/admin/tarifs/${row.id}`}>
           <Pencil className="size-4" />
         </Link>
       </Button>
-      <Button variant="ghost" size="sm" onClick={remove}>
+      <Button variant="ghost" size="sm" onClick={remove} className="px-2 sm:px-3">
         <Trash2 className="size-4 text-destructive" />
       </Button>
     </div>

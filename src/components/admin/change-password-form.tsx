@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { SaveBar } from "@/components/admin/save-bar";
 
 export function ChangePasswordForm() {
   const [pending, start] = useTransition();
@@ -99,12 +100,12 @@ export function ChangePasswordForm() {
           </p>
         )}
       </div>
-      <div>
+      <SaveBar>
         <Button type="submit" disabled={pending}>
           {pending && <Spinner className="mr-2" />}
           {pending ? "Modification…" : "Changer le mot de passe"}
         </Button>
-      </div>
+      </SaveBar>
     </form>
   );
 }

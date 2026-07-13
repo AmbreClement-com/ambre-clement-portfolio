@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { SaveBar } from "@/components/admin/save-bar";
 
 export function ProfileForm({
   firstName,
@@ -60,12 +61,12 @@ export function ProfileForm({
           />
         </div>
       </div>
-      <div>
+      <SaveBar>
         <Button type="submit" disabled={pending}>
           {pending && <Spinner className="mr-2" />}
           {pending ? "Enregistrement…" : "Enregistrer le profil"}
         </Button>
-      </div>
+      </SaveBar>
     </form>
   );
 }

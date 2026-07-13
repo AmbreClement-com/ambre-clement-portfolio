@@ -4,8 +4,6 @@
  * `intensity` est un pourcentage : 100 = réglage par défaut, 0 = nul, 200 = double.
  */
 export type AnimationSettings = {
-  cursorEnabled: boolean;
-  cursorIntensity: number;
   /** Survol « flottement » : la surface de la photo se déforme et suit la souris.
    *  EXCLUSIF avec photoDim (un seul effet de survol à la fois). */
   photoHoverEnabled: boolean;
@@ -30,6 +28,10 @@ export type AnimationSettings = {
   projectTransitionEnabled: boolean;
   /** Vitesse de l'ouverture de projet (mêmes paliers). */
   projectTransitionSpeed: "slow" | "medium" | "fast";
+  /** Les 4 encoches d'angle du cadre (repères « viseur caméra »). Désactivé,
+   *  seul ce détail disparaît — le reste du cadre (textes, compteurs, liens)
+   *  reste en place. */
+  frameCornersEnabled: boolean;
 };
 
 /** Facteur `timeScale` GSAP appliqué à TOUTE la transition (durées + décalages +
@@ -44,8 +46,6 @@ export const TRANSITION_SPEED_FACTOR: Record<
 };
 
 export const DEFAULT_ANIMATIONS: AnimationSettings = {
-  cursorEnabled: true,
-  cursorIntensity: 100,
   // Par défaut : mise en avant (photoDim) active, flottement désactivé.
   photoHoverEnabled: false,
   photoHoverIntensity: 100,
@@ -60,6 +60,7 @@ export const DEFAULT_ANIMATIONS: AnimationSettings = {
   loaderSpeed: "medium",
   projectTransitionEnabled: true,
   projectTransitionSpeed: "medium",
+  frameCornersEnabled: true,
 };
 
 /** Complète d'éventuels champs manquants avec les valeurs par défaut. */
@@ -79,11 +80,6 @@ export function resolveAnimations(
  * avec un libellé et une courte explication, plus un aperçu live.
  */
 export const ANIMATION_INFO = [
-  {
-    key: "cursor",
-    label: "Curseur fumée",
-    help: "Un halo de fumée suit la souris et inverse les couleurs sous lui. Bien visible sur la page Contact, très discret ailleurs.",
-  },
   {
     key: "photoDim",
     label: "Survol : mise en avant",

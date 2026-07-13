@@ -199,12 +199,17 @@ export function SiteFrame({
   email,
   speed,
   domainLabel = null,
+  cornersEnabled = true,
 }: {
   socials: SocialLink[];
   email: string | null;
   speed: number;
   /** Domaine affiché dans le © bas-gauche (réglable dans l'admin). NULL → SITE_URL. */
   domainLabel?: string | null;
+  /** Les 4 encoches d'angle (repères « viseur »). Désactivé dans l'admin →
+   *  non rendues ; le reste du cadre est inchangé (les animations les ignorent :
+   *  refs nulles filtrées). */
+  cornersEnabled?: boolean;
 }) {
   const ctx = useFrameMeta();
   const meta = ctx?.meta ?? null;
@@ -895,26 +900,33 @@ export function SiteFrame({
         className="invisible absolute inset-0 rounded-[2px] border border-white/80 opacity-0"
       />
 
-      <span
-        ref={tlc}
-        data-frame-mark
-        className="absolute left-5 top-[6.5rem] size-4 border-l border-t border-white md:left-8 md:top-14"
-      />
-      <span
-        ref={trc}
-        data-frame-mark
-        className="absolute right-5 top-[6.5rem] size-4 border-r border-t border-white md:right-8 md:top-14"
-      />
-      <span
-        ref={blc}
-        data-frame-mark
-        className="absolute bottom-12 left-5 size-4 border-b border-l border-white md:bottom-14 md:left-8"
-      />
-      <span
-        ref={brc}
-        data-frame-mark
-        className="absolute bottom-12 right-5 size-4 border-b border-r border-white md:bottom-14 md:right-8"
-      />
+      {cornersEnabled && (
+        <>
+          <span
+            ref={tlc}
+            data-frame-mark
+            className="absolute left-5 top-[6.5rem] size-4 border-l border-t border-white md:left-8 md:top-14"
+          />
+          <span
+            ref={trc}
+            data-frame-mark
+            className="absolute right-5 top-[6.5rem] size-4 border-r border-t border-white md:right-8 md:top-14"
+          />
+          {/* env(safe-area-inset-bottom) : sur iOS (Safari barre réduite / PWA),
+              la zone basse de l'écran recouvre le contenu → tout le bas du cadre
+              remonte d'autant. Vaut 0 ailleurs (rendu desktop inchangé). */}
+          <span
+            ref={blc}
+            data-frame-mark
+            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] left-5 size-4 border-b border-l border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:left-8"
+          />
+          <span
+            ref={brc}
+            data-frame-mark
+            className="absolute bottom-[calc(3rem+env(safe-area-inset-bottom))] right-5 size-4 border-b border-r border-white md:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:right-8"
+          />
+        </>
+      )}
 
       {/* data-frame-swap : texte qui CHANGE selon la page → effacé/réécrit en
           MANUSCRIT pendant la transition (les textes stables restent immobiles). */}
@@ -943,7 +955,7 @@ export function SiteFrame({
 
       {/* Copyright — bas-gauche. Mobile : texte réduit pour tenir au coin sans chevaucher
           la nav centrale. */}
-      <div className="absolute bottom-4 left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
+      <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-5 flex items-center text-[10px] tracking-[0.1em] md:left-8 md:text-xs md:tracking-[0.14em]">
         <span>
           ©{year}&nbsp;{domainLabel || siteDomain()}
         </span>
@@ -966,7 +978,7 @@ export function SiteFrame({
       {meta.nav && (
         <div
           data-frame-swap
-          className="project-nav absolute bottom-16 left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-4 lg:gap-3 lg:text-xs"
+          className="project-nav absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] left-1/2 flex max-w-[92vw] -translate-x-1/2 items-center gap-4 text-sm tracking-[0.14em] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:gap-3 lg:text-xs"
         >
           {/* Précédent — bouton rond (mobile/tablette) · flèche + titre (desktop) */}
           {meta.nav.prevSlug ? (
@@ -1058,7 +1070,7 @@ export function SiteFrame({
           onClick={copyEmail}
           data-track="email_copy"
           aria-label={`Copier l'adresse email ${email}`}
-          className="pointer-events-auto absolute bottom-4 right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
+          className="pointer-events-auto absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-5 block font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-opacity hover:opacity-60 md:right-8 md:text-xs md:tracking-[0.14em]"
         >
           {copied ? "Copié !" : email}
         </button>

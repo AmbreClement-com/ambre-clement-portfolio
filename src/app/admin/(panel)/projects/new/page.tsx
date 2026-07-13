@@ -28,7 +28,8 @@ export default async function NewProjectPage({
         description={`Onglet : ${category.name}`}
         backHref={`/admin/categories/${category.id}`}
       />
-      <Card>
+      {/* overflow-visible : requis par le bouton Enregistrer sticky (SaveBar). */}
+      <Card className="overflow-visible">
         <CardContent className="pt-6">
           <ProjectForm categoryId={category.id} />
         </CardContent>

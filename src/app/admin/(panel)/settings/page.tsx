@@ -45,7 +45,8 @@ export default async function AdminSettingsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Gauche : Compte */}
         <div className="grid gap-6">
-          <Card>
+          {/* overflow-visible : requis par le bouton Enregistrer sticky (SaveBar). */}
+          <Card className="overflow-visible">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="size-4 text-primary" />
@@ -60,7 +61,7 @@ export default async function AdminSettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="overflow-visible">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Lock className="size-4 text-primary" />
@@ -91,7 +92,7 @@ export default async function AdminSettingsPage() {
       </div>
 
       {/* Site : identité + mentions légales */}
-      <Card>
+      <Card className="overflow-visible">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="size-4 text-primary" />
@@ -137,8 +138,10 @@ export default async function AdminSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Animations : carte dédiée */}
-      <Card>
+      {/* Animations : carte dédiée. `overflow-visible` : indispensable au bouton
+          Enregistrer STICKY du formulaire (un ancêtre overflow-hidden désactive
+          position:sticky) — aucune image à clipper dans cette carte. */}
+      <Card className="overflow-visible">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" />

@@ -116,14 +116,19 @@ export function TypographySelector({
       </div>
 
       {/* Les classes de TOUTES les polices sont posées ici → chaque carte peut
-          référencer ses variables pour l'aperçu. */}
+          référencer ses variables pour l'aperçu. Zone à scroll interne VOLONTAIREMENT
+          basse (~2 rangées + un bout de la 3ᵉ qui dépasse → on voit qu'il y a plus) ;
+          le thème ACTIF est remonté en tête → visible sans scroller. */}
       <div
         className={cn(
-          "grid max-h-[34rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3",
+          "grid max-h-[22rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3",
           TYPOGRAPHY_ALL_CLASSES,
         )}
       >
-      {TYPOGRAPHY_THEMES.map((t) => {
+      {[
+        ...TYPOGRAPHY_THEMES.filter((t) => t.id === active),
+        ...TYPOGRAPHY_THEMES.filter((t) => t.id !== active),
+      ].map((t) => {
         const fonts = TYPOGRAPHY_FONTS[t.id];
         const isActive = t.id === active;
         return (

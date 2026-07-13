@@ -1,5 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzleNeon, type NeonHttpDatabase } from "drizzle-orm/neon-http";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import * as schema from "./schema";
@@ -17,8 +19,15 @@ function getDb(): DB {
 
   const url = process.env.DATABASE_URL;
   if (url) {
-    // Production / Neon
-    g.__db = drizzleNeon(neon(url), { schema });
+    if (url.includes("neon.tech")) {
+      // Neon : driver HTTP serverless (optimal sur Vercel — pas de connexion à garder).
+      g.__db = drizzleNeon(neon(url), { schema });
+    } else {
+      // PORTABILITÉ : tout Postgres standard (VPS, RDS, Scaleway, Supabase…) via
+      // node-postgres. Pool court (serverless : 1 pool par instance de fonction).
+      const pool = new Pool({ connectionString: url, max: 3 });
+      g.__db = drizzlePg(pool, { schema }) as unknown as DB;
+    }
   } else {
     // Développement local : Postgres en WASM (PGlite), persisté sur disque.
     const pg = new PGlite(".pglite");

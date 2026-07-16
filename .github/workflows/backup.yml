@@ -41,7 +41,10 @@ jobs:
           S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
         run: |
           set -euo pipefail
-          sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client
+          # Client 18 requis (version du serveur Neon) — le dépôt Ubuntu s'arrête à 16.
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client-18
           STAMP=$(date -u +%Y-%m-%d_%H%M)
           pg_dump --no-owner --no-privileges "$DATABASE_URL" \
             | gzip \
@@ -65,7 +68,8 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null
-          rclone sync ":s3,endpoint=${S3_ENDPOINT},access_key_id=${AWS_ACCESS_KEY_ID},secret_access_key=${AWS_SECRET_ACCESS_KEY}:${MEDIA_BUCKET}" \
-                      ":s3,endpoint=${S3_ENDPOINT},access_key_id=${AWS_ACCESS_KEY_ID},secret_access_key=${AWS_SECRET_ACCESS_KEY}:${BACKUP_BUCKET}/media" \
+          # endpoint entre guillemets : rclone se perd sinon dans les « : » de l'URL
+          rclone sync ":s3,provider=Cloudflare,endpoint=\"${S3_ENDPOINT}\",access_key_id=${AWS_ACCESS_KEY_ID},secret_access_key=${AWS_SECRET_ACCESS_KEY}:${MEDIA_BUCKET}" \
+                      ":s3,provider=Cloudflare,endpoint=\"${S3_ENDPOINT}\",access_key_id=${AWS_ACCESS_KEY_ID},secret_access_key=${AWS_SECRET_ACCESS_KEY}:${BACKUP_BUCKET}/media" \
                       --fast-list --transfers 8 --checksum
           echo "✓ media synchronisé"

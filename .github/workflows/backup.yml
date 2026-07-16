@@ -46,7 +46,8 @@ jobs:
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
           sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client-18
           STAMP=$(date -u +%Y-%m-%d_%H%M)
-          pg_dump --no-owner --no-privileges "$DATABASE_URL" \
+          # chemin explicite : le wrapper pg_dump du runner pointe sur le 16 préinstallé
+          /usr/lib/postgresql/18/bin/pg_dump --no-owner --no-privileges "$DATABASE_URL" \
             | gzip \
             | openssl enc -aes-256-cbc -pbkdf2 -pass env:PASSPHRASE \
             > "db_${STAMP}.sql.gz.enc"

@@ -70,13 +70,8 @@ export function computeAlerts(d: AnalyticsData): DashboardAlert[] {
       icon: "perf",
       text: `Réactivité à surveiller : INP p75 à ${Math.round(d.vitals.inp)} ms (cible < 200 ms).`,
     });
-  if (d.vitals.cls != null && d.vitals.cls > 0.1)
-    out.push({
-      key: "cls",
-      tone: d.vitals.cls > 0.25 ? "bad" : "warn",
-      icon: "perf",
-      text: `Stabilité visuelle : CLS p75 à ${d.vitals.cls.toFixed(2).replace(".", ",")} (cible < 0,10) — la mise en page bouge au chargement.`,
-    });
+  // CLS volontairement absent du bandeau (choix : trop anxiogène pour un signal
+  // que l'utilisatrice ne peut pas corriger elle-même) — reste visible page Système.
 
   // Erreurs JS.
   if (d.errors.count > 0)

@@ -82,6 +82,32 @@ export async function putObject(
   return publicUrl(key);
 }
 
+/** Usage du bucket (octets + nombre d'objets) — null si stockage S3 non configuré. */
+export async function getStorageUsage(): Promise<{
+  bytes: number;
+  objects: number;
+} | null> {
+  if (!hasS3) return null;
+  const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+  const client = await s3Client();
+  let bytes = 0;
+  let objects = 0;
+  let ContinuationToken: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({ Bucket: S3.bucket!, ContinuationToken }),
+    );
+    for (const o of page.Contents ?? []) {
+      bytes += o.Size ?? 0;
+      objects += 1;
+    }
+    ContinuationToken = page.IsTruncated
+      ? page.NextContinuationToken
+      : undefined;
+  } while (ContinuationToken);
+  return { bytes, objects };
+}
+
 /** Supprime toutes les déclinaisons d'une photo (original + variants). */
 export async function deletePhotoObjects(storageKey: string): Promise<void> {
   // storageKey = "photos/<hash>-<name>/original.jpg" → on vide tout le dossier

@@ -126,6 +126,9 @@ const TABLE_LABELS: Record<string, string> = {
  *  l'usage en % compréhensible plutôt qu'en octets bruts. */
 export const DB_QUOTA_BYTES = 512 * 1024 * 1024;
 
+/** Palier gratuit du stockage photos Cloudflare R2 (10 Go/mois). */
+export const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024;
+
 export type DatabaseStats = {
   /** Taille totale de la base (octets). */
   totalBytes: number;

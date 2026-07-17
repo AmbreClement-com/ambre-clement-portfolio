@@ -32,7 +32,7 @@ npm run dev
 ## Variables d'environnement
 
 Voir [`.env.example`](.env.example) : `DATABASE_URL` (Neon), `AUTH_SECRET`,
-les clés `R2_*` (Cloudflare) et `NEXT_PUBLIC_SITE_URL`.
+les clés `S3_*` (stockage S3-compatible — Cloudflare R2) et `NEXT_PUBLIC_SITE_URL`.
 
 ## Scripts
 
@@ -79,8 +79,12 @@ src/
   servies via `<ResponsiveImage>` (`<picture>` + srcset, zéro CLS).
 - Alt text **obligatoire** (contrainte base + validation Zod).
 
-## Statut
+## Environnements
 
-Scaffold initial en place (DB, auth, SEO, layout public, ossature admin).
-Restent à brancher : upload de photos, CRUD complet UI, galeries/animations,
-pages à propos/contact, OG images dynamiques.
+| Env | Base (Neon client) | Stockage (R2) | Déploiement |
+|---|---|---|---|
+| dev local | branche `dev` | `ac-media-dev` | `npm run dev` |
+| préprod | branche `preprod` | `ac-media-dev` | push sur `preprod` (Vercel Preview) |
+| production | `main` | `ac-media` | push sur `main` (Vercel Production) |
+
+Détails dans [DEPLOYMENT.md](DEPLOYMENT.md) ; migration d'infra : [docs/MIGRATION.md](docs/MIGRATION.md).

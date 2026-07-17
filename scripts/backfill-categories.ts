@@ -2,7 +2,9 @@
  * Migration de données vers le modèle « onglets = catégories ».
  * À lancer une fois après la migration de schéma (serveur arrêté).
  */
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config(); // .env — ne remplace pas les variables déjà posées
 import { eq, notInArray } from "drizzle-orm";
 import { db, closeDb } from "../src/server/db";
 import { categories, photos, projects } from "../src/server/db/schema";
@@ -52,7 +54,7 @@ async function main() {
     .where(notInArray(categories.slug, ["portfolio", "maternite", "projets"]));
 
   console.log("✓ Backfill catégories terminé :", ids);
-  await closeDb(); // flush PGlite avant de quitter (no-op sur Neon)
+  await closeDb(); // ferme la connexion avant de quitter (no-op sur Neon)
   process.exit(0);
 }
 

@@ -42,6 +42,5 @@ yarn-error.log*
 next-env.d.ts
 
 # local dev artifacts
-.pglite/
 /public/uploads/
 .env.migration

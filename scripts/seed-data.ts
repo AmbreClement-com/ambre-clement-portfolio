@@ -6,9 +6,11 @@
  * Les images sont des dégradés générés à la volée (sharp) puis passés dans
  * le pipeline d'optimisation (AVIF/WebP + LQIP) et stockés comme en prod.
  *
- * Usage :  npm run seed:data   (serveur dev arrêté — verrou PGlite)
+ * Usage :  npm run seed:data
  */
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config(); // .env — ne remplace pas les variables déjà posées
 import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -205,7 +207,7 @@ async function main() {
   await seedVisits();
 
   console.log("Terminé : 6 projets, 30 Portfolio, 20 Maternité + visites démo.");
-  await closeDb(); // flush PGlite avant de quitter (anti-corruption)
+  await closeDb(); // ferme la connexion avant de quitter
   process.exit(0);
 }
 

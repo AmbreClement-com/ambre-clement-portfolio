@@ -52,7 +52,7 @@ export function getSiteConnections(): SiteConnections {
       region: host.match(/\.([a-z]{2}-[a-z]+-\d)\./)?.[1] ?? null,
     };
   } catch {
-    /* pas de DATABASE_URL (PGlite locale) */
+    /* DATABASE_URL absent ou illisible */
   }
 
   // Stockage photos (S3 compatible).
@@ -61,7 +61,6 @@ export function getSiteConnections(): SiteConnections {
     endpointHost = new URL(process.env.S3_ENDPOINT ?? "").hostname;
   } catch {}
   const isR2 = !!endpointHost?.endsWith("r2.cloudflarestorage.com");
-  const isSupabase = !!endpointHost?.endsWith("supabase.co");
   let publicHost: string | null = null;
   try {
     publicHost = new URL(process.env.S3_PUBLIC_URL ?? "").hostname;
@@ -71,16 +70,14 @@ export function getSiteConnections(): SiteConnections {
   const storage: SiteConnections["storage"] = {
     provider: isR2
       ? "Cloudflare R2"
-      : isSupabase
-        ? "Supabase Storage"
-        : endpointHost?.includes("amazonaws")
-          ? "Amazon S3"
-          : endpointHost
-            ? "Stockage S3"
-            : "Non configuré",
+      : endpointHost?.includes("amazonaws")
+        ? "Amazon S3"
+        : endpointHost
+          ? "Stockage S3"
+          : "Non configuré",
     bucket: process.env.S3_BUCKET || null,
-    // Id de compte/projet = 1er segment de l'hôte (R2 comme Supabase).
-    account: isR2 || isSupabase ? (endpointHost?.split(".")[0] ?? null) : null,
+    // Id de compte = 1er segment de l'hôte (R2).
+    account: isR2 ? (endpointHost?.split(".")[0] ?? null) : null,
     publicHost,
   };
 
@@ -159,7 +156,7 @@ export async function getDatabaseStats(): Promise<DatabaseStats> {
     order by pg_total_relation_size(c.oid) desc
   `);
 
-  // Selon le driver (neon-http / pglite), le résultat est `{ rows }` ou un tableau.
+  // Selon le driver (neon-http / node-postgres), le résultat est `{ rows }` ou un tableau.
   const rowsOf = (r: unknown): Record<string, unknown>[] =>
     Array.isArray(r)
       ? (r as Record<string, unknown>[])

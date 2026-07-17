@@ -2,7 +2,9 @@
  * Seed initial : crée le compte admin + les catégories de base.
  * Usage :  ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run seed
  */
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config(); // .env — ne remplace pas les variables déjà posées
 import { hash } from "@node-rs/argon2";
 import { eq } from "drizzle-orm";
 import { db, closeDb } from "../src/server/db";
@@ -53,7 +55,7 @@ async function main() {
   console.log("✓ Réglages initiaux");
 
   console.log("Seed terminé.");
-  await closeDb(); // flush PGlite avant de quitter (anti-corruption)
+  await closeDb(); // ferme la connexion avant de quitter
   process.exit(0);
 }
 

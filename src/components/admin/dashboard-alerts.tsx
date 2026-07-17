@@ -1,6 +1,5 @@
 import {
   AlertTriangle,
-  CheckCircle2,
   TrendingDown,
   TrendingUp,
   Zap,
@@ -93,16 +92,9 @@ const ICONS = {
   warn: AlertTriangle,
 } as const;
 
-/** Bandeau d'alertes : uniquement ce qui mérite l'attention, sinon « tout va bien ». */
+/** Bandeau d'alertes : uniquement ce qui mérite l'attention — rien quand tout va bien. */
 export function DashboardAlerts({ alerts }: { alerts: DashboardAlert[] }) {
-  if (alerts.length === 0) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-4 py-2.5 text-sm text-emerald-700 dark:text-emerald-400">
-        <CheckCircle2 className="size-4 shrink-0" />
-        Tout est au vert : trafic stable, aucune erreur détectée, performances dans les cibles.
-      </div>
-    );
-  }
+  if (alerts.length === 0) return null;
   return (
     <ul className="grid gap-2">
       {alerts.map((a) => {

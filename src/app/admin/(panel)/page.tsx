@@ -10,6 +10,8 @@ import {
   Images,
 } from "lucide-react";
 import { getAnalytics } from "@/server/db/queries/analytics";
+import { getStorageUsage } from "@/server/images/storage";
+import { StorageCard } from "@/components/admin/storage-card";
 import { TrafficChart } from "@/components/admin/traffic-chart";
 import { KpiCard } from "@/components/admin/kpi-card";
 import { RangeSelector } from "@/components/admin/range-selector";
@@ -54,7 +56,10 @@ export default async function AdminDashboard({
 }) {
   const { range: rangeRaw } = await searchParams;
   const range = Number(rangeRaw) || 30;
-  const d = await getAnalytics(range).catch(() => null);
+  const [d, storageUsage] = await Promise.all([
+    getAnalytics(range).catch(() => null),
+    getStorageUsage().catch(() => null),
+  ]);
 
   if (!d) {
     return (
@@ -90,7 +95,7 @@ export default async function AdminDashboard({
         }
       />
 
-      {/* Ce qui mérite l'attention (sinon : tout va bien) */}
+      {/* Ce qui mérite l'attention (rien affiché quand tout va bien) */}
       <DashboardAlerts alerts={alerts} />
 
       {/* KPIs avec tendance + contexte */}
@@ -147,6 +152,9 @@ export default async function AdminDashboard({
           sub="Part des visites à une seule page"
         />
       </div>
+
+      {/* Stockage des photos — visible d'un coup d'œil, sans aller dans Système */}
+      <StorageCard usage={storageUsage} />
 
       {/* Courbe de fréquentation */}
       <Card>

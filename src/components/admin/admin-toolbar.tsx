@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 type Me = {
   email: string;
@@ -40,6 +41,41 @@ export function AdminToolbar() {
   const pathname = usePathname();
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [theme, setTheme] = useState<string | undefined>(undefined);
+  const [shrunk, setShrunk] = useState(false);
+
+  // Rétrécit la barre quand on défile vers le bas, la restaure en remontant
+  // (façon Instagram). Écoute en CAPTURE : les pages galeries défilent dans des
+  // conteneurs internes, pas seulement sur window.
+  useEffect(() => {
+    const lastPos = new WeakMap<Element, number>();
+    let lastWin = window.scrollY;
+    const onScroll = (e: Event) => {
+      let y: number;
+      let prev: number;
+      if (e.target instanceof Element) {
+        y = e.target.scrollTop;
+        prev = lastPos.get(e.target) ?? y;
+        lastPos.set(e.target, y);
+      } else {
+        y = window.scrollY;
+        prev = lastWin;
+        lastWin = y;
+      }
+      const delta = y - prev;
+      if (Math.abs(delta) < 4) return; // ignore le bruit (rubber-band iOS…)
+      if (y <= 24) {
+        setShrunk(false); // en haut de page : toujours pleine taille
+        return;
+      }
+      setShrunk(delta > 0);
+    };
+    window.addEventListener("scroll", onScroll, {
+      capture: true,
+      passive: true,
+    });
+    return () =>
+      window.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -86,7 +122,12 @@ export function AdminToolbar() {
     <div className="pointer-events-none fixed inset-x-0 bottom-10 z-50 flex justify-center px-4 print:hidden">
       <div
         data-theme={theme}
-        className="glass-refract pointer-events-auto relative flex items-center gap-1.5 overflow-hidden rounded-full bg-white/18 p-1.5 text-neutral-900 shadow-[0_12px_40px_-6px_rgba(0,0,0,0.3)] ring-1 ring-white/40"
+        className={cn(
+          "glass-refract pointer-events-auto relative flex items-center gap-1.5 overflow-hidden rounded-full bg-white/18 p-1.5 text-neutral-900 shadow-[0_12px_40px_-6px_rgba(0,0,0,0.3)] ring-1 ring-white/40",
+          // rebond élastique (easing « back ») ancré en bas, comme Instagram
+          "origin-bottom transition-transform duration-500 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]",
+          shrunk && "scale-[0.85] hover:scale-100",
+        )}
       >
         {/* reflet supérieur, touche « glass » */}
         <span className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />

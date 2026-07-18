@@ -602,10 +602,11 @@ export function SiteHeader({
     ? "[text-shadow:0_1px_2px_rgba(0,0,0,0.55),0_2px_12px_rgba(0,0,0,0.4)]"
     : "[text-shadow:0_0_3px_rgba(255,255,255,1),0_0_7px_rgba(255,255,255,0.95),0_1px_2px_rgba(255,255,255,0.9)]";
   const dotColor = dark ? "bg-white" : "bg-neutral-900";
-  const itemActive = dark ? "text-white" : "text-neutral-900";
+  // Page courante en NOIR franc ; les autres nettement en retrait (et foncent au survol).
+  const itemActive = dark ? "text-white" : "text-black";
   const itemIdle = dark
-    ? "text-white/85 group-hover:text-white"
-    : "text-neutral-900/85 group-hover:text-neutral-900";
+    ? "text-white/55 group-hover:text-white/90"
+    : "text-neutral-900/55 group-hover:text-neutral-900/85";
   const numActive = dark ? "text-white/70" : "text-neutral-900/60";
   const numIdle = dark ? "text-white/30" : "text-neutral-900/30";
   const arrow = dark ? "text-white/50" : "text-neutral-900/45";

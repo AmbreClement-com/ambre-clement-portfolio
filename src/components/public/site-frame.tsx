@@ -1056,7 +1056,7 @@ export function SiteFrame({
 
       <Link
         href="/mentions-legales"
-        className="pointer-events-auto absolute bottom-28 right-4 hidden [writing-mode:vertical-rl] rotate-180 text-[10px] tracking-[0.2em] opacity-25 transition-opacity hover:opacity-100 md:right-7 md:block"
+        className="pointer-events-auto absolute bottom-28 right-4 block [writing-mode:vertical-rl] rotate-180 text-[10px] tracking-[0.2em] opacity-25 transition-opacity hover:opacity-100 md:right-7"
       >
         Mentions légales
       </Link>

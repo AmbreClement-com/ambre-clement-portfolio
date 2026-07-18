@@ -12,31 +12,66 @@ export const metadata: Metadata = buildMetadata({
   description: "Mentions légales du site d'Ambre Clément.",
 });
 
+type LegalSection = { title: string | null; body: string };
+
+/**
+ * Découpe le texte libre des Réglages en sections : les blocs sont séparés par
+ * des lignes vides multiples, et une première ligne TOUT EN CAPITALES devient
+ * l'intertitre du bloc (grammaire mono/uppercase du cadre). Un texte sans cette
+ * structure s'affiche tel quel, en paragraphes.
+ */
+function parseLegal(text: string): LegalSection[] {
+  const isHeading = (l: string) =>
+    l.length > 0 && l.length < 60 && l === l.toUpperCase() && /[A-ZÀ-Ý]/.test(l);
+  return text
+    .trim()
+    .split(/\n{3,}/)
+    .map((block) => {
+      const lines = block.trim().split("\n");
+      if (isHeading(lines[0]!) && lines.length > 1) {
+        return { title: lines[0]!, body: lines.slice(1).join("\n").trim() };
+      }
+      return { title: null, body: block.trim() };
+    })
+    .filter((s) => s.body.length > 0 || s.title);
+}
+
 export default async function LegalPage() {
   const settings = await getSettings().catch(() => null);
+  const sections = settings?.legalNotice
+    ? parseLegal(settings.legalNotice)
+    : null;
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-11 pb-24 pt-28 md:px-6 md:pb-32 md:pt-44">
+    <main className="mx-auto min-h-screen w-full max-w-3xl px-11 pb-28 pt-28 md:px-6 md:pb-36 md:pt-40">
       <FrameMeta title="Mentions légales" />
+      <h1 className="sr-only">Mentions légales</h1>
+
       <Reveal>
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-neutral-400">
-          Informations légales
-        </p>
-        <h1 className="mt-6 text-3xl font-extralight uppercase tracking-[0.02em] sm:text-4xl md:text-6xl">
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500">
           Mentions légales
-        </h1>
+        </p>
       </Reveal>
 
       <Reveal delay={0.12}>
-        <div className="mt-14 border-t border-neutral-200 pt-10">
-          {settings?.legalNotice ? (
-            <div className="whitespace-pre-line text-base font-light leading-relaxed text-neutral-600">
-              {settings.legalNotice}
-            </div>
-          ) : (
-            <p className="text-neutral-400">Mentions légales à venir.</p>
-          )}
-        </div>
+        {sections ? (
+          <div className="mt-10 grid gap-10 border-t border-neutral-200 pt-10 md:mt-12 md:gap-12 md:pt-12">
+            {sections.map((s, i) => (
+              <section key={s.title ?? i}>
+                {s.title && (
+                  <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-neutral-500">
+                    {s.title}
+                  </h2>
+                )}
+                <div className="mt-3 max-w-2xl whitespace-pre-line text-sm font-light leading-relaxed text-neutral-800 sm:text-base">
+                  {s.body}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-10 text-neutral-600">Mentions légales à venir.</p>
+        )}
       </Reveal>
     </main>
   );

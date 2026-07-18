@@ -48,29 +48,23 @@ export default async function LegalPage() {
       <h1 className="sr-only">Mentions légales</h1>
 
       <Reveal>
-        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-neutral-500">
-          Mentions légales
-        </p>
-      </Reveal>
-
-      <Reveal delay={0.12}>
         {sections ? (
-          <div className="mt-10 grid gap-10 border-t border-neutral-200 pt-10 md:mt-12 md:gap-12 md:pt-12">
+          <div className="grid gap-10 md:gap-12">
             {sections.map((s, i) => (
               <section key={s.title ?? i}>
                 {s.title && (
-                  <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-neutral-500">
+                  <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-neutral-900">
                     {s.title}
                   </h2>
                 )}
-                <div className="mt-3 max-w-2xl whitespace-pre-line text-sm font-light leading-relaxed text-neutral-800 sm:text-base">
+                <div className="mt-3 max-w-2xl whitespace-pre-line text-[15px] font-light leading-relaxed text-neutral-900 sm:text-base">
                   {s.body}
                 </div>
               </section>
             ))}
           </div>
         ) : (
-          <p className="mt-10 text-neutral-600">Mentions légales à venir.</p>
+          <p className="text-neutral-900">Mentions légales à venir.</p>
         )}
       </Reveal>
     </main>

@@ -56,15 +56,10 @@ uniform float uMouseX;
 uniform float uMouseY;
 uniform float uHover;
 uniform float uZoom;
-uniform float uReveal;
 uniform vec2 uOffset;
 varying vec2 vTextureCoord;
 void main() {
   vec3 pos = aVertexPosition;
-  // Apparition : la photo naît légèrement plus bas et à 98 % de sa taille, puis
-  // se pose (uReveal 0→1, easing côté CPU). Le fondu passe par uAlpha.
-  pos.y -= (1.0 - uReveal) * 0.12;
-  pos.xy *= 0.98 + 0.02 * uReveal;
   // Position verticale du sommet dans le viewport : 0 = haut, 1 = bas.
   float vy = uPhase + aVertexPosition.y * uHalf;
   // « Rouleau » fixe au milieu de l'écran (pleine largeur, droit) : une bosse
@@ -318,9 +313,8 @@ export function PhotosScroller({
               mouseY: { name: "uMouseY", type: "1f", value: 0 },
               hover: { name: "uHover", type: "1f", value: 0 },
               // opacité de la photo (estompage des non-survolées)
-              alpha: { name: "uAlpha", type: "1f", value: 0 },
+              alpha: { name: "uAlpha", type: "1f", value: 1 },
               zoom: { name: "uZoom", type: "1f", value: 1 },
-              reveal: { name: "uReveal", type: "1f", value: 0 },
               offset: { name: "uOffset", type: "2f", value: [0, 0] },
             },
           }),
@@ -347,14 +341,6 @@ export function PhotosScroller({
       let time = 0;
       let smx = 0;
       let smy = 0;
-      // Apparition à l'entrée dans le viewport : progression 0→1 par plan,
-      // BASÉE SUR LE TEMPS (indépendante du framerate), décalage de 70 ms par
-      // colonne — miroir du reveal-soft CSS servi en mobile/tablette.
-      const REVEAL_MS = 450;
-      const reveal = els.map((_, i) => ({
-        start: 0, // timestamp du 1er passage visible (0 = pas encore)
-        delay: (i % perRow) * 70,
-      }));
       curtains.onRender(() => {
         const vh = window.innerHeight || 1;
         time += 0.016; // léger « souffle »
@@ -383,19 +369,6 @@ export function PhotosScroller({
         planes.forEach((p, i) => {
           const b = p.getBoundingRect();
           const cy = (b.top + b.height / 2) / vh;
-          // Apparition : dès que la photo touche le viewport, progression 0→1
-          // en ~0,45 s (easeOutCubic) → fondu + montée + scale. Visibilité lue
-          // sur le rect DOM (px CSS) — celui du plan est en px physiques (retina).
-          const r = reveal[i];
-          const dr = els[i].getBoundingClientRect();
-          const visible = dr.top < vh && dr.bottom > 0;
-          if (visible && r.start === 0) r.start = performance.now() + r.delay;
-          const prog =
-            r.start === 0
-              ? 0
-              : Math.min(1, Math.max(0, (performance.now() - r.start) / REVEAL_MS));
-          const eased = 1 - Math.pow(1 - prog, 3);
-          p.uniforms.reveal.value = eased;
           p.uniforms.velocity.value = amp;
           p.uniforms.phase.value = cy;
           p.uniforms.half.value = b.height / 2 / vh;
@@ -411,13 +384,10 @@ export function PhotosScroller({
           p.uniforms.hover.value += (hTarget - p.uniforms.hover.value) * 0.09;
           // Mise en avant : la photo survolée reste à 1, TOUTES les autres
           // s'estompent vers `dimAlpha`. Lerp doux ≈ le fondu 0,4 s de la référence.
-          // Le tout multiplié par l'apparition (fondu d'entrée).
           const target =
-            (hoverRef.current === null || hoverRef.current === i
-              ? 1
-              : dimAlpha) * eased;
+            hoverRef.current === null || hoverRef.current === i ? 1 : dimAlpha;
           const a = p.uniforms.alpha.value as number;
-          p.uniforms.alpha.value = a + (target - a) * 0.18;
+          p.uniforms.alpha.value = a + (target - a) * 0.1;
         });
       });
 
@@ -463,44 +433,6 @@ export function PhotosScroller({
     if (index !== null) l.stop();
     else l.start();
   }, [index]);
-
-  // APPARITION DES PHOTOS (mobile/tablette uniquement) : fondu + petite montée
-  // quand une photo entre dans le viewport, avec un léger décalage par colonne.
-  // Un SEUL IntersectionObserver pour toute la grille. Les classes sont posées
-  // en JS (pas au rendu) → sans JS ou côté SSR, les photos restent visibles.
-  // Sur desktop (webglEnabled), on ne touche pas au DOM : les plans WebGL en
-  // dupliquent la géométrie et l'effet curtains assure déjà l'apparition.
-  useIsoLayoutEffect(() => {
-    if (webglEnabled || reduced) return;
-    const root = rootRef.current;
-    if (!root) return;
-    const els = Array.from(root.querySelectorAll<HTMLElement>("[data-plane]"));
-    if (els.length === 0) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const el = entry.target as HTMLElement;
-          const idx = els.indexOf(el);
-          el.style.transitionDelay = `${(idx % perRow) * 60}ms`;
-          el.classList.add("is-in");
-          io.unobserve(el);
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
-    );
-    els.forEach((el) => {
-      el.classList.add("reveal-soft");
-      io.observe(el);
-    });
-    return () => {
-      io.disconnect();
-      els.forEach((el) => {
-        el.classList.remove("reveal-soft", "is-in");
-        el.style.transitionDelay = "";
-      });
-    };
-  }, [webglEnabled, reduced, perRow, photos.length]);
 
   // Masque la barre de défilement tant que la galerie infinie est active
   useEffect(() => {

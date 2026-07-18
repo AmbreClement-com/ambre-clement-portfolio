@@ -11,6 +11,7 @@ import "lenis/dist/lenis.css";
 import { ResponsiveImage } from "@/components/public/responsive-image";
 import { FrameMeta } from "@/components/public/frame-context";
 import { pageZoom } from "@/lib/page-zoom";
+import { claimScroll } from "@/lib/scroll-owner";
 import type { Pricing } from "@/server/db/schema";
 
 const RM_QUERY = "(prefers-reduced-motion: reduce)";
@@ -220,6 +221,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     // lerp élevé (avant 0.08) = inertie courte → pas de "glisse" entre deux tarifs.
     const lenis = new Lenis({ lerp: 0.2 });
     lenisRef.current = lenis;
+    const releaseScroll = claimScroll(); // retire le lissage global (SmoothScroll)
     let raf = 0;
     let last = -1;
 
@@ -299,6 +301,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(idle);
+      releaseScroll();
       lenis.destroy();
       lenisRef.current = null;
     };

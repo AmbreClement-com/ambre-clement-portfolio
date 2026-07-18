@@ -19,6 +19,7 @@ import {
 } from "@/components/public/project-transition";
 import { ProjectTransitionMount } from "@/components/public/project-transition-mount";
 import { pageZoom } from "@/lib/page-zoom";
+import { claimScroll } from "@/lib/scroll-owner";
 import { HudInner } from "@/components/public/site-frame";
 import type { Photo, Project } from "@/server/db/schema";
 
@@ -234,6 +235,7 @@ export function ProjectsCinema({
     // projets après le geste ; recalage quasi immédiat.
     const lenis = new Lenis({ lerp: 0.2 });
     lenisRef.current = lenis;
+    const releaseScroll = claimScroll(); // retire le lissage global (SmoothScroll)
     let raf = 0;
     let last = -1;
 
@@ -333,6 +335,7 @@ export function ProjectsCinema({
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(idle);
+      releaseScroll();
       lenis.destroy();
       lenisRef.current = null;
     };

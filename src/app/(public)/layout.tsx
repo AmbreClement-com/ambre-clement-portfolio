@@ -4,6 +4,7 @@ import { FrameProvider } from "@/components/public/frame-context";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { Analytics } from "@/components/public/analytics";
 import { IntroOverlay } from "@/components/public/intro-overlay";
+import { SmoothScroll } from "@/components/public/smooth-scroll";
 import {
   getSettings,
   getNavCategories,
@@ -90,6 +91,7 @@ export default async function PublicLayout({
           cornersEnabled={anims.frameCornersEnabled}
         />
         <Analytics />
+        <SmoothScroll />
         <IntroOverlay
           enabled={anims.loaderEnabled}
           speed={loaderSpeed}

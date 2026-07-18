@@ -12,6 +12,7 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { ResponsiveImage } from "@/components/public/responsive-image";
 import { pageZoom, pageOffset, projectReveal } from "@/lib/page-zoom";
+import { claimScroll } from "@/lib/scroll-owner";
 import { cn } from "@/lib/utils";
 import type { Photo } from "@/server/db/schema";
 
@@ -279,6 +280,7 @@ export function PhotosScroller({
 
       const lenis = new Lenis({ lerp: 0.09, infinite: false });
       lenisRef.current = lenis;
+      const releaseScroll = claimScroll(); // retire le lissage global (SmoothScroll)
       // Accès aux champs internes (privés dans les types, présents à l'exécution)
       // pour décaler le scroll en préservant l'élan lors de la boucle infinie.
       const li = lenis as unknown as {
@@ -399,6 +401,7 @@ export function PhotosScroller({
       cleanup = () => {
         cancelAnimationFrame(raf);
         window.removeEventListener("resize", measure);
+        releaseScroll();
         lenis.destroy();
         lenisRef.current = null;
         planes.forEach((p) => p.remove());
@@ -430,6 +433,44 @@ export function PhotosScroller({
     if (index !== null) l.stop();
     else l.start();
   }, [index]);
+
+  // APPARITION DES PHOTOS (mobile/tablette uniquement) : fondu + petite montée
+  // quand une photo entre dans le viewport, avec un léger décalage par colonne.
+  // Un SEUL IntersectionObserver pour toute la grille. Les classes sont posées
+  // en JS (pas au rendu) → sans JS ou côté SSR, les photos restent visibles.
+  // Sur desktop (webglEnabled), on ne touche pas au DOM : les plans WebGL en
+  // dupliquent la géométrie et l'effet curtains assure déjà l'apparition.
+  useIsoLayoutEffect(() => {
+    if (webglEnabled || reduced) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const els = Array.from(root.querySelectorAll<HTMLElement>("[data-plane]"));
+    if (els.length === 0) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          const idx = els.indexOf(el);
+          el.style.transitionDelay = `${(idx % perRow) * 60}ms`;
+          el.classList.add("is-in");
+          io.unobserve(el);
+        }
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
+    );
+    els.forEach((el) => {
+      el.classList.add("reveal-soft");
+      io.observe(el);
+    });
+    return () => {
+      io.disconnect();
+      els.forEach((el) => {
+        el.classList.remove("reveal-soft", "is-in");
+        el.style.transitionDelay = "";
+      });
+    };
+  }, [webglEnabled, reduced, perRow, photos.length]);
 
   // Masque la barre de défilement tant que la galerie infinie est active
   useEffect(() => {

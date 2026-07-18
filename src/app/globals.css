@@ -131,6 +131,13 @@
        ne crée pas de conteneur de défilement → n'affecte ni le scroll vertical ni
        les éléments `position: sticky` (sidebar admin). */
     overflow-x: clip;
+    /* Pas de rebond élastique aux bornes (macOS/iOS) : l'overscroll décollait tout
+       le rendu — cadre et navbar fixed compris — et révélait un bandeau blanc.
+       Coupe aussi le pull-to-refresh mobile (bienvenu en haut de galerie). */
+    overscroll-behavior-y: none;
+    /* Ceinture-bretelles : si un navigateur rebondit quand même, la zone révélée
+       reste du même blanc que les pages. */
+    background-color: #fff;
   }
 }
 /* ============================================================

@@ -22,51 +22,64 @@ export default async function ContactPage() {
   const image = settings?.contactImage ?? null;
 
   return (
-    <main className="relative h-[100svh] w-full overflow-hidden bg-neutral-900">
+    // MOBILE : photo plein écran + texte par-dessus (inchangé). DESKTOP (md+) :
+    // scindé — texte à GAUCHE sur fond blanc, photo pleine hauteur à DROITE.
+    <main className="relative h-[100svh] w-full overflow-hidden bg-neutral-900 md:bg-white">
       <FrameMeta title="Contact" tone="dark" />
 
-      {/* Image plein écran (éditable en réglages) */}
+      {/* Image (éditable en réglages) : plein écran en mobile, moitié droite en
+          desktop (le wrapper la borne, object-cover recadre). */}
       {image && (
-        <ResponsiveImage
-          variants={image.variants}
-          alt={title}
-          width={image.width}
-          height={image.height}
-          lqip={image.lqip}
-          priority
-          sizes="100vw"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <div className="absolute inset-0 md:left-1/2">
+          <ResponsiveImage
+            variants={image.variants}
+            alt={title}
+            width={image.width}
+            height={image.height}
+            lqip={image.lqip}
+            priority
+            sizes="(max-width: 767px) 100vw, 50vw"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
       )}
 
-      {/* Voile pour la lisibilité du texte à gauche */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
+      {/* Voile pour la lisibilité du texte posé SUR la photo — mobile uniquement
+          (en desktop le texte vit sur le blanc, la photo reste nue). Renforcé et
+          VERTICAL (bas plus sombre = zone du texte, haut plus léger = la photo
+          reste perceptible), même sur les images très claires. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/55 to-black/25 md:hidden" />
 
       {/* Texte : titre + paragraphe + email — padding gauche élargi pour dégager
           les icônes sociales du cadre (bord gauche, centre vertical). */}
       {/* Mobile : le contenu tient DANS le cadre (entre les repères haut/bas) et défile
-          si le texte est long — ancré en bas pour les textes courts. Desktop : ancré en
-          bas comme à l'origine. */}
-      <div className="absolute inset-x-0 top-28 bottom-16 flex flex-col justify-end overflow-y-auto pl-11 pr-6 md:inset-y-auto md:bottom-0 md:block md:overflow-visible md:pb-32 md:pl-24 md:pr-12 lg:max-w-4xl">
+          si le texte est long — ancré en bas pour les textes courts (inchangé).
+          Desktop : COLONNE GAUCHE (droite = photo), toujours ancré en bas. */}
+      <div className="absolute inset-x-0 top-28 bottom-16 flex flex-col justify-end overflow-y-auto pl-14 pr-12 md:inset-y-auto md:bottom-0 md:right-1/2 md:left-0 md:block md:overflow-visible md:pb-32 md:pl-24 md:pr-12">
         <h1
-          className="c-rise max-w-3xl text-2xl font-light leading-[1.05] text-white sm:text-4xl md:text-6xl"
+          className="c-rise max-w-3xl text-2xl font-light leading-[1.05] text-white sm:text-4xl md:text-6xl md:text-neutral-900"
           style={{ animationDelay: "0.12s" }}
         >
           {title}
         </h1>
         {text && (
+          // Même registre que les mentions légales (lisibilité maximale) :
+          // graisse normale, noir pur sur desktop, blanc plein sur mobile.
           <p
-            className="c-rise mt-6 max-w-xl whitespace-pre-line text-sm font-light leading-relaxed text-white/80 sm:text-base md:text-lg"
+            className="c-rise mt-6 max-w-xl whitespace-pre-line text-[15px] font-normal leading-relaxed text-white sm:text-base md:text-black"
             style={{ animationDelay: "0.36s" }}
           >
             {text}
           </p>
         )}
+
+        {/* Coordonnées : email, téléphone, lieu — MÊME taille (celle du texte),
+            empilées l'une sous l'autre. Masquées si vides (réglages admin). */}
         <a
           href={`mailto:${email}`}
           data-track="contact_email"
           style={{ animationDelay: "0.5s" }}
-          className="c-rise group mt-8 inline-flex max-w-full flex-wrap items-baseline gap-3 text-base font-light text-white sm:text-lg md:text-2xl"
+          className="c-rise group mt-8 inline-flex max-w-full flex-wrap items-baseline gap-3 text-[15px] font-normal text-white sm:text-base md:text-black"
         >
           <span className="break-all bg-[linear-gradient(currentColor,currentColor)] bg-[length:100%_1px] bg-left-bottom bg-no-repeat pb-1 transition-[background-size] duration-500 ease-out group-hover:bg-[length:0%_1px]">
             {email}
@@ -75,19 +88,16 @@ export default async function ContactPage() {
             ↗
           </span>
         </a>
-
-        {/* Téléphone + lieu (réglés dans l'onglet Contact de l'admin ; masqués si vides).
-            Même grammaire mono/uppercase que le cadre. */}
         {(phone || location) && (
           <div
-            className="c-rise mt-6 flex flex-wrap items-baseline gap-x-8 gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-white/70"
+            className="c-rise mt-2.5 flex flex-col items-start gap-1.5 text-[15px] font-normal text-white sm:text-base md:text-black"
             style={{ animationDelay: "0.62s" }}
           >
             {phone && (
               <a
                 href={`tel:${phone.replace(/[^+\d]/g, "")}`}
                 data-track="contact_phone"
-                className="transition-colors hover:text-white"
+                className="transition-opacity hover:opacity-70"
               >
                 {phone}
               </a>

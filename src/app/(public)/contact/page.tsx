@@ -27,20 +27,23 @@ export default async function ContactPage() {
     <main className="relative h-[100svh] w-full overflow-hidden bg-neutral-900 md:bg-white">
       <FrameMeta title="Contact" tone="dark" />
 
-      {/* Image (éditable en réglages) : plein écran en mobile, moitié droite en
-          desktop (le wrapper la borne, object-cover recadre). */}
+      {/* Image (éditable en réglages) : plein écran en mobile ; en desktop, un
+          TIRAGE 3:4 bien plus petit, centré dans la moitié droite — même
+          grammaire que les photos de la page Tarifs (ombre douce portée). */}
       {image && (
-        <div className="absolute inset-0 md:left-1/2">
-          <ResponsiveImage
-            variants={image.variants}
-            alt={title}
-            width={image.width}
-            height={image.height}
-            lqip={image.lqip}
-            priority
-            sizes="(max-width: 767px) 100vw, 50vw"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+        <div className="absolute inset-0 md:left-1/2 md:flex md:items-center md:justify-center md:py-12 md:pl-8 md:pr-32">
+          <div className="absolute inset-0 md:relative md:inset-auto md:aspect-[3/4] md:w-full md:max-w-sm md:overflow-hidden md:shadow-[0_24px_70px_-25px_rgba(0,0,0,0.4)]">
+            <ResponsiveImage
+              variants={image.variants}
+              alt={title}
+              width={image.width}
+              height={image.height}
+              lqip={image.lqip}
+              priority
+              sizes="(max-width: 767px) 100vw, 384px"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
         </div>
       )}
 
@@ -54,8 +57,9 @@ export default async function ContactPage() {
           les icônes sociales du cadre (bord gauche, centre vertical). */}
       {/* Mobile : le contenu tient DANS le cadre (entre les repères haut/bas) et défile
           si le texte est long — ancré en bas pour les textes courts (inchangé).
-          Desktop : COLONNE GAUCHE (droite = photo), toujours ancré en bas. */}
-      <div className="absolute inset-x-0 top-28 bottom-16 flex flex-col justify-end overflow-y-auto pl-14 pr-12 md:inset-y-auto md:bottom-0 md:right-1/2 md:left-0 md:block md:overflow-visible md:pb-32 md:pl-24 md:pr-12">
+          Desktop : COLONNE GAUCHE centrée VERTICALEMENT — le bloc texte répond au
+          tirage photo centré de la colonne droite (composition équilibrée). */}
+      <div className="absolute inset-x-0 top-28 bottom-16 flex flex-col justify-end overflow-y-auto pl-14 pr-12 md:inset-y-0 md:right-1/2 md:left-0 md:justify-center md:overflow-visible md:pl-40 md:pr-10 lg:pl-48">
         <h1
           className="c-rise max-w-3xl text-2xl font-light leading-[1.05] text-white sm:text-4xl md:text-6xl md:text-neutral-900"
           style={{ animationDelay: "0.12s" }}

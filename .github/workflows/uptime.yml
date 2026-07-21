@@ -1,0 +1,48 @@
+# Monitoring uptime — possédé par le client (aucun service tiers, aucun compte).
+#
+# Toutes les 15 minutes, on vérifie que :
+#   • https://ambreclement.com répond 200 (le site) ;
+#   • https://media.ambreclement.com sert une vraie photo du bucket R2 (les médias).
+#
+# Chaque cible est testée jusqu'à 3 fois (30 s d'écart) avant d'être déclarée en
+# panne — un hoquet réseau ponctuel ne réveille personne. Si le workflow ÉCHOUE,
+# GitHub envoie automatiquement un email « Run failed » (réglable dans
+# github.com → Settings → Notifications → Actions).
+#
+# NB : les crons GitHub sont « au mieux » (parfois +5-10 min de retard) — largement
+# suffisant pour un portfolio ; l'enjeu est de savoir si le site est tombé, pas à
+# la minute près.
+
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {} # test manuel possible (onglet Actions)
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Site + médias répondent
+        run: |
+          set -uo pipefail
+          check() {
+            local nom="$1" url="$2"
+            for essai in 1 2 3; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 \
+                -A "Mozilla/5.0 (uptime-check ambreclement.com)" "$url" || echo 000)
+              if [ "$code" = "200" ]; then
+                echo "✓ $nom OK (HTTP 200)"
+                return 0
+              fi
+              echo "  $nom : HTTP $code (essai $essai/3)"
+              [ "$essai" -lt 3 ] && sleep 30
+            done
+            echo "✗ $nom EN PANNE (dernier code : $code) — $url"
+            return 1
+          }
+          ko=0
+          check "Site" "https://ambreclement.com/" || ko=1
+          check "Médias (R2)" "https://media.ambreclement.com/photos/e1358f93fecf8031-DSC-1928/480.webp" || ko=1
+          exit $ko

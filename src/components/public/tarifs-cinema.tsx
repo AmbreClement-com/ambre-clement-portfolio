@@ -353,6 +353,7 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
       wrap
         .querySelectorAll<HTMLElement>("[data-cinema-snap]")
         .forEach((m, k) => {
+          if (k === n - 1) return; // le dernier reste ancré en bas (align "end")
           m.style.top = `${n > 1 ? (k / (n - 1)) * total : 0}px`;
         });
     };
@@ -419,17 +420,30 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
       style={{ height: `calc(100vh + ${(n - 1) * stepVh}vh)` }}
       className="relative bg-white"
     >
-      {/* Marqueurs de snap natif (tactile) : un par tarif, aux paliers exacts. */}
+      {/* Marqueurs de snap natif (tactile) : un par tarif, aux paliers exacts.
+          Le DERNIER est ancré au BAS de la course (align "end") : sa cible reste
+          juste quelle que soit la hauteur du viewport (barre Safari iOS repliée
+          ou non) — sinon le snap « remontait » la dernière slide toute seule. */}
       {touch &&
-        Array.from({ length: n }, (_, k) => (
-          <div
-            key={k}
-            aria-hidden
-            data-cinema-snap
-            className="absolute left-0 h-px w-px"
-            style={{ top: `${k * stepVh}vh`, scrollSnapAlign: "start" }}
-          />
-        ))}
+        Array.from({ length: n }, (_, k) =>
+          k === n - 1 ? (
+            <div
+              key={k}
+              aria-hidden
+              data-cinema-snap
+              className="absolute bottom-0 left-0 h-px w-px"
+              style={{ scrollSnapAlign: "end" }}
+            />
+          ) : (
+            <div
+              key={k}
+              aria-hidden
+              data-cinema-snap
+              className="absolute left-0 h-px w-px"
+              style={{ top: `${k * stepVh}vh`, scrollSnapAlign: "start" }}
+            />
+          ),
+        )}
       {/* Compteur du cadre (haut droite) = « (01 / 03) », comme le cinéma projets. */}
       <FrameMeta title="Tarifs" count={n} current={active + 1} />
       <div className="sticky top-0 h-screen overflow-hidden bg-white text-neutral-900">

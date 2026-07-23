@@ -216,6 +216,8 @@ export function Lightbox({
                   // Sans `sizes`, le navigateur suppose 100vw et charge la plus grande variante
                   // (≈8 Mo) même sur un petit écran → lag/crash mobile. `sizes="92vw"` (largeur
                   // réelle de la visionneuse) laisse le srcset choisir. Repli : cf. bestUrl().
+                  // Mode CORS : cohérence de cache avec la galerie WebGL (cf. responsive-image).
+                  crossOrigin="anonymous"
                   src={bestUrl(current)}
                   alt={current.altText}
                   draggable={false}

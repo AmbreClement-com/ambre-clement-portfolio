@@ -45,6 +45,13 @@ export function ResponsiveImage({
         alt={alt}
         width={width}
         height={height}
+        // TOUJOURS en mode CORS : la galerie desktop (WebGL) recharge ces mêmes
+        // URLs avec crossOrigin — si l'image classique était chargée SANS, le
+        // navigateur réutilisait sa copie en cache dépourvue des en-têtes CORS
+        // (R2 ne les envoie qu'aux requêtes cross-origin) → texture refusée,
+        // photos NOIRES. Un seul mode partout = cache cohérent. Nécessite la
+        // politique CORS (GET public) sur le bucket médias.
+        crossOrigin="anonymous"
         loading={priority ? "eager" : "lazy"}
         decoding={priority ? "auto" : "async"}
         fetchPriority={priority ? "high" : "auto"}

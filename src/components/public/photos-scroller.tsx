@@ -468,8 +468,12 @@ export function PhotosScroller({
       >
         <div
           className={cn(
+            // Hauteur = viewport MOINS les paddings du conteneur de page
+            // (mobile pt-32+pb-[4.5rem] = 200px, md+ pt-24+pb-24 = 192px) → une
+            // petite galerie qui tient à l'écran ne crée AUCUN scroll. svh sur
+            // mobile : barre Safari visible ou non, jamais de dépassement.
             smallGallery &&
-              "flex min-h-[calc(100vh-12rem)] flex-col justify-center",
+              "flex min-h-[calc(100svh-12.5rem)] flex-col justify-center md:min-h-[calc(100vh-12rem)]",
           )}
         >
           <div

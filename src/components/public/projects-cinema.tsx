@@ -544,8 +544,11 @@ export function ProjectsCinema({
         {/* Les repères d'angle + le compteur sont fournis par le cadre global. */}
 
         {/* Bande de vignettes (gauche) — décalée à droite pour ne pas chevaucher
-            la colonne d'icônes réseaux sociaux du cadre (gauche-milieu). */}
-        <div className="pointer-events-none absolute left-0 top-0 hidden h-screen w-40 overflow-hidden md:block">
+            la colonne d'icônes réseaux sociaux du cadre (gauche-milieu).
+            z-[110] : AU-DESSUS des couches photo (z≤100, plein écran et
+            pointer-events auto sur l'active) — sans ça, la couche avalait les
+            clics et survols des vignettes. */}
+        <div className="pointer-events-none absolute left-0 top-0 z-[110] hidden h-screen w-40 overflow-hidden md:block">
           <div ref={stripRef} className="absolute left-16 will-change-transform">
             {projects.map((p, i) => {
               const cover = p.photos[0];

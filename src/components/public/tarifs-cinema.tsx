@@ -478,8 +478,9 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
         </div>
 
         {/* Bande de vignettes (gauche) — lg+ uniquement : entre 768 et 1024px elle
-            chevauchait la photo (contenu en px-16/24) → bande du bas à la place. */}
-        <div className="pointer-events-none absolute left-0 top-0 hidden h-screen w-40 overflow-hidden lg:block">
+            chevauchait la photo (contenu en px-16/24) → bande du bas à la place.
+            z-[110] : au-dessus des couches (z≤100) — cf. cinéma projets. */}
+        <div className="pointer-events-none absolute left-0 top-0 z-[110] hidden h-screen w-40 overflow-hidden lg:block">
           <div ref={stripRef} className="absolute left-16 will-change-transform">
             {pricings.map((p, i) => (
               <button

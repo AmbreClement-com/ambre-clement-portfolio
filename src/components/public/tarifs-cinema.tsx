@@ -12,6 +12,7 @@ import { ResponsiveImage } from "@/components/public/responsive-image";
 import { FrameMeta } from "@/components/public/frame-context";
 import { pageZoom } from "@/lib/page-zoom";
 import { claimScroll } from "@/lib/scroll-owner";
+import { useStripScrub } from "@/components/public/strip-scrub";
 import type { Pricing } from "@/server/db/schema";
 
 const RM_QUERY = "(prefers-reduced-motion: reduce)";
@@ -224,7 +225,10 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const stripRef = useRef<HTMLDivElement | null>(null);
+  const mStripRef = useRef<HTMLDivElement | null>(null); // rail horizontal (mobile)
   const lenisRef = useRef<Lenis | null>(null);
+  // true pendant un scrub de la bande mobile → le snap natif est suspendu.
+  const snapPauseRef = useRef(false);
 
   useEffect(() => {
     if (reduced || n === 0) return;
@@ -238,23 +242,26 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
 
     let lastAf = -1;
     let lastVh = -1;
+    let lastVw = -1;
     const loop = (t: number) => {
       lenis.raf(t);
       const wrap = wrapRef.current;
       if (wrap) {
         const vh = window.innerHeight;
+        const vw = window.innerWidth;
         const total = wrap.offsetHeight - vh;
         const rectTop = wrap.getBoundingClientRect().top;
         const traveled = Math.min(Math.max(-rectTop, 0), total);
         const af = total > 0 ? (traveled / total) * (n - 1) : 0;
 
         // PERF : à l'arrêt (af inchangé), aucune réécriture de styles par frame.
-        if (af === lastAf && vh === lastVh) {
+        if (af === lastAf && vh === lastVh && vw === lastVw) {
           raf = requestAnimationFrame(loop);
           return;
         }
         lastAf = af;
         lastVh = vh;
+        lastVw = vw;
 
         const layers = layerRefs.current;
         for (let i = 0; i < layers.length; i++) {
@@ -272,6 +279,19 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           stripRef.current.style.transform = `translateY(${(
             vh / 2 -
             (af + 0.5) * STEP
+          ).toFixed(2)}px)`;
+        }
+
+        // Rail horizontal mobile : centre la vignette du tarif actif (suit le
+        // scroll — même mécanique que le cinéma projets). Pas mesuré → suit la
+        // taille réelle des vignettes.
+        const mStrip = mStripRef.current;
+        const firstThumb = mStrip?.firstElementChild as HTMLElement | null;
+        if (mStrip && firstThumb) {
+          const stepX = firstThumb.offsetWidth + 6; // + gap-1.5
+          mStrip.style.transform = `translateX(${(
+            vw / 2 -
+            (af + 0.5) * stepX
           ).toFixed(2)}px)`;
         }
 
@@ -340,7 +360,8 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     window.addEventListener("resize", place);
     let raf = 0;
     const tick = () => {
-      const want = pageZoom.value >= 0.999;
+      // Suspendu aussi pendant un scrub de la bande de vignettes (strip-scrub).
+      const want = pageZoom.value >= 0.999 && !snapPauseRef.current;
       if (el.classList.contains("ac-snap-y") !== want)
         el.classList.toggle("ac-snap-y", want);
       raf = requestAnimationFrame(tick);
@@ -365,6 +386,16 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
     if (touch) window.scrollTo({ top, behavior: "smooth" });
     else lenis.scrollTo(top, { duration: 1.1 });
   };
+
+  // Bande mobile « scrubbable » : glisser = naviguer entre tarifs, taper =
+  // aller au tarif. Vertical natif intact (texte interne + snap du cinéma).
+  const mBandRef = useStripScrub({
+    wrapRef,
+    stripRef: mStripRef,
+    n,
+    goTo,
+    snapPauseRef,
+  });
 
   // ---- Repli accessible (reduced-motion) : tarifs empilés ----
   if (reduced) {
@@ -465,12 +496,21 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           className="pointer-events-none absolute inset-x-0 bottom-0 z-[105] h-44 bg-gradient-to-t from-white from-65% to-transparent md:hidden"
         />
 
-        {/* Bande de vignettes horizontale (mobile) — navigation entre tarifs. Relevée
-            AU-DESSUS des repères de coin du cadre (bottom-12 + size-4 → jusqu'à 64px) :
-            elle se pose ainsi clairement À L'INTÉRIEUR du cadre, au-dessus du fondu
-            (z-110 > fondu z-105 > slides z≤100). */}
-        <div className="absolute inset-x-0 bottom-20 z-[110] flex justify-center px-4 md:bottom-12 lg:hidden">
-          <div className="flex max-w-[92vw] gap-1.5 overflow-x-auto pb-1">
+        {/* Bande de vignettes horizontale (mobile) — RAIL translaté centré sur le
+            tarif actif (même mécanique que le cinéma projets) + SCRUBBABLE :
+            glisser la bande navigue entre les tarifs, taper une vignette y va
+            (cf. strip-scrub). `touch-action: pan-y` : le geste vertical reste
+            100 % natif. Au-dessus du fondu (z-110 > fondu z-105 > slides ≤100),
+            posée À L'INTÉRIEUR du cadre (au-dessus des repères bottom-12). */}
+        <div
+          ref={mBandRef}
+          style={{ touchAction: "pan-y" }}
+          className="absolute inset-x-0 bottom-16 z-[110] h-16 overflow-hidden md:bottom-8 lg:hidden"
+        >
+          <div
+            ref={mStripRef}
+            className="absolute bottom-5 left-0 flex gap-1.5 will-change-transform"
+          >
             {pricings.map((p, i) => (
               <button
                 key={p.id}

@@ -20,6 +20,7 @@ import {
 import { ProjectTransitionMount } from "@/components/public/project-transition-mount";
 import { pageZoom } from "@/lib/page-zoom";
 import { claimScroll } from "@/lib/scroll-owner";
+import { useStripScrub } from "@/components/public/strip-scrub";
 import { HudInner } from "@/components/public/site-frame";
 import type { Photo, Project } from "@/server/db/schema";
 
@@ -103,6 +104,8 @@ export function ProjectsCinema({
   const stripRef = useRef<HTMLDivElement | null>(null);
   const mStripRef = useRef<HTMLDivElement | null>(null); // bande horizontale (mobile)
   const lenisRef = useRef<Lenis | null>(null);
+  // true pendant un scrub de la bande mobile → le snap natif est suspendu.
+  const snapPauseRef = useRef(false);
 
   const router = useRouter();
   const busy = useRef(false);
@@ -368,7 +371,9 @@ export function ProjectsCinema({
     // la galerie sortait du petit cadre (affichée en haut). Actif au repos uniquement.
     let raf = 0;
     const tick = () => {
-      const want = pageZoom.value >= 0.999;
+      // Suspendu aussi pendant un scrub de la bande de vignettes (strip-scrub) :
+      // le snap se battrait contre notre pilotage direct du scroll.
+      const want = pageZoom.value >= 0.999 && !snapPauseRef.current;
       if (el.classList.contains("ac-snap-y") !== want)
         el.classList.toggle("ac-snap-y", want);
       raf = requestAnimationFrame(tick);
@@ -393,6 +398,17 @@ export function ProjectsCinema({
     if (touch) window.scrollTo({ top, behavior: "smooth" });
     else lenis.scrollTo(top, { duration: 1.1 });
   };
+
+  // Bande mobile « scrubbable » : glisser = naviguer entre projets, taper =
+  // aller au projet. Le geste vertical reste natif (scroll de base intact) ;
+  // pendant le scrub le snap est suspendu via snapPauseRef (cf. strip-scrub).
+  const mBandRef = useStripScrub({
+    wrapRef,
+    stripRef: mStripRef,
+    n,
+    goTo,
+    snapPauseRef,
+  });
 
   if (n === 0) {
     return (
@@ -587,7 +603,11 @@ export function ProjectsCinema({
         {/* Position JUSTE SOUS la photo : la couverture fait 48vh centrée → son bas est à
             74vh du haut, donc on ancre la bande à 76vh (et 75vh sur écran haut où on la
             remonte un peu). h-16 = assez haut pour la plus grande vignette. */}
-        <div className="pointer-events-none absolute inset-x-0 top-[76vh] z-[110] h-16 overflow-hidden md:hidden [@media(min-height:800px)]:top-[75vh]">
+        <div
+          ref={mBandRef}
+          style={{ touchAction: "pan-y" }}
+          className="absolute inset-x-0 top-[76vh] z-[110] h-16 overflow-hidden md:hidden [@media(min-height:800px)]:top-[75vh]"
+        >
           <div
             ref={mStripRef}
             className="absolute left-0 top-0 flex gap-1.5 will-change-transform"

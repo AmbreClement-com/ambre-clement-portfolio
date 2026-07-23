@@ -446,7 +446,11 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
         )}
       {/* Compteur du cadre (haut droite) = « (01 / 03) », comme le cinéma projets. */}
       <FrameMeta title="Tarifs" count={n} current={active + 1} />
-      <div className="sticky top-0 h-screen overflow-hidden bg-white text-neutral-900">
+      {/* h-dvh (et non h-screen=100vh) : sur iOS, 100vh = écran barre Safari
+          REPLIÉE ; barre visible, la scène débordait la fenêtre réelle et la
+          dernière slide poussait la scène hors du sticky (titre coupé, la page
+          « remontait »). dvh suit l'état de la barre → fin de course exacte. */}
+      <div className="sticky top-0 h-dvh overflow-hidden bg-white text-neutral-900">
         {/* Couches (fondu + dolly) — chaque couche = un tarif complet */}
         <div className="absolute inset-0">
           {pricings.map((p, i) => (

@@ -497,7 +497,9 @@ export function ProjectsCinema({
           Sans lui, le fond blanc de la page est dans un autre contexte d'empilement → le
           texte blanc en mix-blend n'a rien à inverser hors de la photo (→ invisible). Avec,
           le texte devient noir sur le blanc et reste inversé sur la photo : lisible partout. */}
-      <div className="sticky top-0 h-screen overflow-hidden bg-white">
+      {/* h-dvh : même correction iOS que le cinéma tarifs (barre Safari visible
+          → 100vh déborde la fenêtre réelle et la dernière slide se coupe). */}
+      <div className="sticky top-0 h-dvh overflow-hidden bg-white">
         {/* Couches d'images empilées (fondu + dolly) */}
         <div className="absolute inset-0">
           {projects.map((p, i) => {

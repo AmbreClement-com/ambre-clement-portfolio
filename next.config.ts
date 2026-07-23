@@ -33,6 +33,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false, // évite la collision avec le menu compte (bas-gauche)
+  // DEV uniquement : autorise l'accès au serveur de dev depuis le réseau local
+  // (test mobile : http://<ip-du-mac>:3000) — sans ça, Next bloque les assets
+  // /_next/* en cross-origin et la page arrive sans CSS. Ignoré en production.
+  allowedDevOrigins: ["192.168.1.*", "*.local"],
   // sharp (natif) : chargé depuis node_modules, non bundlé
   serverExternalPackages: ["sharp"],
   // Transitions de vue React (morph couverture → page projet à l'ouverture)

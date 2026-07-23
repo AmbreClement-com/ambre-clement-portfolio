@@ -91,9 +91,9 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
         <div className="mt-6 h-px w-full shrink-0 bg-neutral-200" />
 
         {/* Corps défilant (seule zone scrollable) — padding bas généreux pour que
-            les dernières lignes puissent remonter AU-DESSUS de la bande de
-            vignettes qui recouvre le bas de l'écran. */}
-        <div className="min-h-0 flex-1 overflow-y-auto pb-32">
+            les dernières lignes puissent remonter AU-DESSUS du fondu blanc et de
+            la bande de vignettes qui recouvrent le bas de l'écran. */}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-44">
         {paragraphs.length > 0 && (
           <div className="mt-5 space-y-3">
             {/* Registre des mentions légales : noir pur + graisse normale (lisibilité). */}
@@ -457,10 +457,19 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
           </div>
         </div>
 
+        {/* Fondu blanc au-dessus de la bande de vignettes (mobile) : le corps du
+            tarif défile DERRIÈRE mais s'estompe avant la zone des vignettes —
+            aucun texte ne se mélange jamais au slider. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[105] h-44 bg-gradient-to-t from-white from-65% to-transparent md:hidden"
+        />
+
         {/* Bande de vignettes horizontale (mobile) — navigation entre tarifs. Relevée
             AU-DESSUS des repères de coin du cadre (bottom-12 + size-4 → jusqu'à 64px) :
-            elle se pose ainsi clairement À L'INTÉRIEUR du cadre. */}
-        <div className="absolute inset-x-0 bottom-20 flex justify-center px-4 md:bottom-12 lg:hidden">
+            elle se pose ainsi clairement À L'INTÉRIEUR du cadre, au-dessus du fondu
+            (z-110 > fondu z-105 > slides z≤100). */}
+        <div className="absolute inset-x-0 bottom-20 z-[110] flex justify-center px-4 md:bottom-12 lg:hidden">
           <div className="flex max-w-[92vw] gap-1.5 overflow-x-auto pb-1">
             {pricings.map((p, i) => (
               <button

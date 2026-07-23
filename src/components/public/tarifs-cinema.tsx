@@ -54,16 +54,20 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
     .map((s) => s.trim())
     .filter(Boolean);
   return (
-    <div className="w-full">
-      {/* ── MOBILE : le texte prime, la photo est un petit accent haut-droite ── */}
-      <div className="md:hidden">
+    <div className="h-full w-full md:h-auto">
+      {/* ── MOBILE : le texte prime, la photo est un petit accent haut-droite ──
+          L'EN-TÊTE (titre + sous-titre + photo + filet) reste FIXE ; seul le
+          CORPS (paragraphes, prestations, tarif) défile en interne — le texte
+          en trop passe DERRIÈRE la bande de vignettes du bas. Arrivé au bout,
+          le geste suivant chaîne sur le document → tarif suivant (snap). */}
+      <div className="flex h-full min-h-0 flex-col md:hidden">
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-light uppercase leading-[1.05] tracking-wide text-neutral-900">
               {p.title}
             </h2>
             {p.subtitle && (
-              <p className="mt-2.5 font-mono text-[11px] uppercase tracking-[0.15em] text-neutral-500">
+              <p className="mt-2.5 font-mono text-[11px] uppercase tracking-[0.15em] text-neutral-700">
                 {p.subtitle}
               </p>
             )}
@@ -84,14 +88,19 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
           )}
         </div>
 
-        <div className="mt-6 h-px w-full bg-neutral-200" />
+        <div className="mt-6 h-px w-full shrink-0 bg-neutral-200" />
 
+        {/* Corps défilant (seule zone scrollable) — padding bas généreux pour que
+            les dernières lignes puissent remonter AU-DESSUS de la bande de
+            vignettes qui recouvre le bas de l'écran. */}
+        <div className="min-h-0 flex-1 overflow-y-auto pb-32">
         {paragraphs.length > 0 && (
           <div className="mt-5 space-y-3">
+            {/* Registre des mentions légales : noir pur + graisse normale (lisibilité). */}
             {paragraphs.map((para, i) => (
               <p
                 key={i}
-                className="text-[13px] font-light leading-relaxed text-neutral-700"
+                className="text-[15px] font-normal leading-relaxed text-black"
               >
                 {para}
               </p>
@@ -101,16 +110,16 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
 
         {p.includes.length > 0 && (
           <div className="mt-6">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-neutral-400">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-black">
               La séance comprend
             </p>
             <ul className="mt-3 space-y-1.5">
               {p.includes.map((it, i) => (
                 <li
                   key={i}
-                  className="flex gap-2.5 text-[13px] font-light leading-relaxed text-neutral-800"
+                  className="flex gap-2.5 text-[15px] font-normal leading-relaxed text-black"
                 >
-                  <span aria-hidden className="shrink-0 text-neutral-300">
+                  <span aria-hidden className="shrink-0 text-neutral-400">
                     —
                   </span>
                   <span>{it}</span>
@@ -122,14 +131,15 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
 
         {p.price && (
           <div className="mt-7 flex items-baseline justify-between gap-4 border-y border-neutral-200 py-3.5">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-neutral-400">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-black">
               Tarif
             </span>
-            <span className="text-right text-base font-light tracking-wide text-neutral-900">
+            <span className="text-right text-base font-normal tracking-wide text-black">
               {p.price}
             </span>
           </div>
         )}
+        </div>
       </div>
 
       {/* ── DESKTOP (md+) : photo à gauche, texte à droite — inchangé ── */}
@@ -160,25 +170,26 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
             {p.title}
           </h2>
           {p.subtitle && (
-            <p className="mt-2 text-sm font-medium text-neutral-600">
+            <p className="mt-2 text-sm font-medium text-neutral-800">
               {p.subtitle}
             </p>
           )}
+          {/* Registre des mentions légales : noir pur + graisse normale (lisibilité). */}
           {paragraphs.map((para, i) => (
             <p
               key={i}
-              className="mt-4 max-w-prose text-sm font-light leading-relaxed text-neutral-700"
+              className="mt-4 max-w-prose text-[15px] font-normal leading-relaxed text-black sm:text-base"
             >
               {para}
             </p>
           ))}
           {p.includes.length > 0 && (
             <div className="mt-5">
-              <p className="text-sm font-medium">La séance comprend :</p>
-              <ul className="mt-2 grid gap-1 text-sm font-light text-neutral-700">
+              <p className="text-base font-medium text-black">La séance comprend :</p>
+              <ul className="mt-2 grid gap-1 text-[15px] font-normal text-black sm:text-base">
                 {p.includes.map((it, i) => (
                   <li key={i} className="flex gap-2">
-                    <span className="shrink-0 text-neutral-400">·</span>
+                    <span className="shrink-0 text-neutral-500">·</span>
                     <span>{it}</span>
                   </li>
                 ))}
@@ -186,7 +197,7 @@ function TarifBlock({ p, priority }: { p: Pricing; priority?: boolean }) {
             </div>
           )}
           {p.price && (
-            <p className="mt-6 inline-block bg-neutral-100 px-5 py-3 text-sm font-medium uppercase tracking-wide">
+            <p className="mt-6 inline-block bg-neutral-100 px-5 py-3 text-sm font-medium uppercase tracking-wide text-black">
               {p.price}
             </p>
           )}
@@ -399,14 +410,16 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
               ref={(el) => {
                 layerRefs.current[i] = el;
               }}
-              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-32 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-16 md:py-0 lg:px-24"
+              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-0 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-16 md:py-0 lg:px-24"
               style={{ opacity: i === 0 ? 1 : 0 }}
             >
-              {/* MOBILE : le CONTENU de la slide scrolle en INTERNE (un tarif long n'est
-                  plus coupé). Arrivé en bas du texte, le geste suivant CHAÎNE sur le
-                  scroll du document → le snap enchaîne sur le tarif suivant, exactement
+              {/* MOBILE : l'en-tête du tarif reste FIXE, seul le CORPS scrolle en
+                  interne (cf. TarifBlock) — la slide descend jusqu'en bas de
+                  l'écran (pb-0) pour que le texte passe DERRIÈRE la bande de
+                  vignettes. En fin de texte, le geste CHAÎNE sur le scroll du
+                  document → le snap enchaîne sur le tarif suivant, exactement
                   comme le cinéma projets. Desktop : inchangé (tout tient à l'écran). */}
-              <div className="max-h-full w-full max-w-4xl overflow-y-auto md:max-h-none md:overflow-visible">
+              <div className="h-full w-full max-w-4xl overflow-hidden md:h-auto md:overflow-visible">
                 <TarifBlock p={p} priority={i === 0} />
               </div>
             </div>

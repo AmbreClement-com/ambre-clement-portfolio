@@ -24,13 +24,14 @@ export function LoginForm() {
       password: form.get("password"),
       redirect: false,
     });
-    setLoading(false);
     if (res?.error) {
+      setLoading(false);
       setError("Email ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.");
       return;
     }
-    // déclenche l'animation de bienvenue sur la page suivante
-    sessionStorage.setItem("welcome", "1");
+    // Succès : on GARDE l'état « Connexion… » (spinner) jusqu'à l'arrivée sur
+    // l'admin — c'est la navigation qui est longue, pas la vérification ; sans
+    // ça le bouton redevenait cliquable et on « cliquait dans le vide ».
     router.push(params.get("callbackUrl") ?? "/admin");
     router.refresh();
   }

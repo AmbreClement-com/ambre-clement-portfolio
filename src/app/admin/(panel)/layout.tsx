@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { AdminToolbar } from "@/components/admin/admin-toolbar";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
-import { WelcomeOverlay } from "@/components/admin/welcome-overlay";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
@@ -49,7 +48,6 @@ export default async function AdminLayout({
         })
         .catch(() => null)
     : null;
-  const firstName = session.user.firstName ?? null;
   const theme = isThemeKey(me?.theme) ? me.theme : "default";
 
   const navProps = {
@@ -86,7 +84,6 @@ export default async function AdminLayout({
       </main>
       <Toaster />
       <AdminToolbar />
-      <WelcomeOverlay firstName={firstName} />
     </div>
   );
 }

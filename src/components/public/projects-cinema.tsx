@@ -591,6 +591,7 @@ export function ProjectsCinema({
               index: active + 1,
               total: n,
             }}
+            description={current.description}
           />
         </div>
 
@@ -608,6 +609,7 @@ export function ProjectsCinema({
               index: active + 1,
               total: n,
             }}
+            description={current.description}
           />
         </div>
 

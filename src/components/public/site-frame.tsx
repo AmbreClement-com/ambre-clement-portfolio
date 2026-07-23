@@ -156,8 +156,13 @@ function collectTextNodes(root: HTMLElement): Text[] {
  *  HUD sur toutes les pages). */
 export function HudInner({
   info,
+  description = null,
 }: {
   info: NonNullable<FrameMetaData["projectInfo"]>;
+  /** Description du projet (cinémas uniquement — le calque persistant du cadre
+   *  ne la porte pas : un paragraphe se décodant en Matrix serait illisible).
+   *  Prose en bas de casse, tronquée (3 lignes mobile / 4 desktop). */
+  description?: string | null;
 }) {
   return (
     <>
@@ -179,6 +184,11 @@ export function HudInner({
           <div className="text-[10px] tracking-[0.2em] opacity-60">Année</div>
           <div className="mt-0.5 text-xs tracking-[0.15em]">{info.year}</div>
         </div>
+      )}
+      {description && (
+        <p className="line-clamp-3 max-w-56 whitespace-normal text-[11px] font-normal normal-case leading-relaxed tracking-normal opacity-85 [font-family:var(--typo-body)] md:line-clamp-4 md:max-w-64">
+          {description}
+        </p>
       )}
     </>
   );

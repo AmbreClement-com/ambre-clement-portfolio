@@ -441,7 +441,9 @@ export function TarifsCinema({ pricings }: { pricings: Pricing[] }) {
               ref={(el) => {
                 layerRefs.current[i] = el;
               }}
-              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-0 pt-28 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-16 md:py-0 lg:px-24"
+              // pt-36 mobile : les repères d'angle du cadre sont à 104-120px ; le
+              // contenu démarre 24px dessous — même respiration qu'aux côtés.
+              className="absolute inset-0 flex items-start justify-center overflow-hidden px-11 pb-0 pt-36 will-change-[opacity,transform] md:items-center md:overflow-visible md:px-16 md:py-0 lg:px-24"
               style={{ opacity: i === 0 ? 1 : 0 }}
             >
               {/* MOBILE : l'en-tête du tarif reste FIXE, seul le CORPS scrolle en

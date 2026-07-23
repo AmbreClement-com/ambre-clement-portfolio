@@ -43,7 +43,9 @@ export default async function LegalPage() {
     : null;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-11 pb-28 pt-28 md:px-6 md:pb-36 md:pt-40">
+    // pt-36 mobile : le contenu démarre 24px SOUS les repères d'angle du cadre
+    // (104-120px) — même respiration qu'aux côtés. Desktop inchangé.
+    <main className="mx-auto min-h-screen w-full max-w-3xl px-11 pb-28 pt-36 md:px-6 md:pb-36 md:pt-40">
       <FrameMeta title="Mentions légales" />
       <h1 className="sr-only">Mentions légales</h1>
 
